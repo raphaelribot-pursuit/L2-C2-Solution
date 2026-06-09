@@ -2,8 +2,8 @@
 
 Privacy-first, local-only clone of **Whisper Notes** — record, import files, or paste a **YouTube URL**, then transcribe entirely on-device with Whisper Large V3 Turbo. No cloud STT. No accounts required.
 
-**Repository:** https://github.com/nessaisling-lab/L2-Clone-Prodject  
-**Collaborators:** [Aisling Leiva](https://github.com/aislingld-pursuit) · [Jimmy Ong](https://github.com/jimmyronin)
+**Repository:** https://github.com/aislingld-pursuit/L2-Clone-Prodject  
+**Collaborators:** [Jimmy Ong](https://github.com/jimmyronin) · [Personal mirror](https://github.com/nessaisling-lab/L2-Clone-Prodject)
 
 ## Documents
 
