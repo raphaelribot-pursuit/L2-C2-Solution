@@ -9,4 +9,4 @@ hound = "3.5"
 serde = { version = "1", features = ["derive"] }
 symphonia = { version = "0.5", features = ["mp3", "aac", "flac", "ogg", "wav", "isomp4"] }
 thiserror = "2"
-whisper-rs = "0.13"
+whisper-rs = "0.14"

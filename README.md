@@ -43,9 +43,25 @@ Requires `Aisling Copy of 20260515 PRD Template.docx` in this folder (close in W
 
 ### Run the app
 
+Run **one command per line** (pasting multiple commands together causes errors like `installnpm`).
+
 ```powershell
 cd wisper
 npm install
+```
+
+If `cmake --version` fails in your terminal (common right after install), either **restart Cursor** or use the dev script:
+
+```powershell
+cd wisper
+.\dev.ps1
+```
+
+Or fix PATH for the current session only:
+
+```powershell
+$env:Path += ";C:\Program Files\CMake\bin"
+cmake --version
 npm run tauri dev
 ```
 

@@ -1,0 +1,4 @@
+# CMake is required to build whisper.cpp (whisper-rs-sys).
+# Winget installs to Program Files; Cursor terminals often miss PATH updates.
+[env]
+CMAKE = "C:/Program Files/CMake/bin/cmake.exe"
