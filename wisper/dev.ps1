@@ -10,17 +10,42 @@ if (-not (Test-Path $cmakeExe)) {
 }
 
 function Find-VsDevCmd {
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path $vswhere) {
+        $installPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null
+        if ($installPath) {
+            $devCmd = Join-Path $installPath "Common7\Tools\VsDevCmd.bat"
+            if (Test-Path $devCmd) {
+                return $devCmd
+            }
+        }
+    }
+
+    # Prefer newer VS installs (18 before 2022) when vswhere is unavailable.
     $candidates = @(
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\18\BuildTools\Common7\Tools\VsDevCmd.bat",
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat",
         "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat",
         "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat",
-        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\Professional\Common7\Tools\VsDevCmd.bat",
-        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\18\BuildTools\Common7\Tools\VsDevCmd.bat",
-        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\18\Community\Common7\Tools\VsDevCmd.bat"
+        "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\Professional\Common7\Tools\VsDevCmd.bat"
     )
 
     foreach ($path in $candidates) {
         if (Test-Path $path) {
             return $path
+        }
+    }
+
+    return $null
+}
+
+function Get-VsDevCmdForCl {
+    param([Parameter(Mandatory = $true)][string]$ClPath)
+
+    if ($ClPath -match '^(?<root>.*)\\VC\\Tools\\MSVC\\') {
+        $devCmd = Join-Path $Matches.root "Common7\Tools\VsDevCmd.bat"
+        if (Test-Path $devCmd) {
+            return $devCmd
         }
     }
 
@@ -77,6 +102,13 @@ function Initialize-MsvcDevEnvironment {
     if ($clPath) {
         Set-CMakeCompilerEnv -ClPath $clPath
         Write-Host "MSVC ready: $clPath"
+        $script:VsDevCmdPath = Get-VsDevCmdForCl -ClPath $clPath
+        if (-not $script:VsDevCmdPath) {
+            $script:VsDevCmdPath = Find-VsDevCmd
+        }
+        if ($script:VsDevCmdPath) {
+            Write-Host "VsDevCmd: $($script:VsDevCmdPath)"
+        }
         return $true
     }
 
@@ -99,11 +131,16 @@ function Initialize-MsvcDevEnvironment {
     }
 
     Set-CMakeCompilerEnv -ClPath $clPath
+    $script:VsDevCmdPath = Get-VsDevCmdForCl -ClPath $clPath
+    if (-not $script:VsDevCmdPath) {
+        $script:VsDevCmdPath = $vsDevCmd
+    }
     Write-Host "MSVC ready: $clPath"
+    Write-Host "VsDevCmd: $($script:VsDevCmdPath)"
     return $true
 }
 
-$script:VsDevCmdPath = Find-VsDevCmd
+$script:VsDevCmdPath = $null
 $script:MsvcReady = Initialize-MsvcDevEnvironment
 
 $env:CMAKE = $cmakeExe

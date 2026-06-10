@@ -17,4 +17,7 @@ pub enum WisperError {
 
     #[error("whisper init failed: {0}")]
     WhisperInit(String),
+
+    #[error("storage error: {0}")]
+    Storage(String),
 }
