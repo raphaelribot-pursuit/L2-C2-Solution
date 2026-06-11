@@ -141,7 +141,7 @@ jobs:
           version: 1.4.309.0
           cache: true
       - name: Fetch whisper-rs-sys for Vulkan patch
-        run: cargo fetch --manifest-path wisper-core/Cargo.toml --features gpu-vulkan
+        run: cargo fetch --manifest-path wisper-core/Cargo.toml
       - name: Patch ggml-vulkan CMake (Windows)
         shell: pwsh
         run: ./scripts/patch-vulkan-cmake.ps1
