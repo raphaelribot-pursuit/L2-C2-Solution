@@ -64,9 +64,9 @@ flowchart TB
 
 | Platform | Shell | Inference | Min hardware | Notes |
 |----------|-------|-----------|--------------|-------|
-| **macOS** | Tauri 2 | whisper.cpp + Core ML | Apple Silicon M1+, 8GB RAM | Primary dev target; 10× real-time possible on M-series |
-| **Windows** | Tauri 2 | whisper.cpp + CUDA / Vulkan / CPU | 8GB RAM, optional NVIDIA GPU | CUDA preferred; CPU fallback with smaller quant |
-| **Linux** | Tauri 2 | whisper.cpp + CUDA / Vulkan / CPU | 8GB RAM | AppImage or .deb distribution |
+| **macOS** | Tauri 2 | whisper.cpp + Metal (+ Core ML Phase 0.6) | Apple Silicon or Intel Mac, 8GB RAM | Metal on all supported Macs; Core ML encoder after GPU foundation |
+| **Windows** | Tauri 2 | whisper.cpp + CUDA / Vulkan / CPU | 8GB RAM, optional GPU | CUDA for NVIDIA; Vulkan default for AMD/Intel; same matrix as Linux |
+| **Linux** | Tauri 2 | whisper.cpp + CUDA / Vulkan / CPU | 8GB RAM | **Equal desktop priority** — AppImage / .deb; Vulkan for AMD/Intel |
 | **iOS** | Native SwiftUI | WhisperKit or whisper.cpp Core ML | iPhone 12+ | Background transcription limited by iOS GPU policy |
 | **Android** | Native Kotlin | whisper.cpp + NNAPI / GPU | 6GB+ RAM, mid-range SoC | Model size affects APK vs on-first-run download |
 
@@ -149,13 +149,30 @@ User pastes URL (YouTube, etc.)
 | **Balanced** | small.en Q5 | Low-RAM machines |
 | **Fast** | base.en Q8 | Quick drafts on weak hardware |
 
-### Accelerator selection (automatic)
+### Accelerator selection
+
+**Runtime (today):** User toggles **CPU** or **GPU** in the desktop UI. `WhisperContextParameters.use_gpu` is set accordingly. On GPU failure, Wisper invalidates the GPU context and retries once on CPU.
+
+**Compile time (today):** whisper.cpp links **one** GPU backend per binary. Cargo features select the backend:
+
+| Build | Feature / platform | Backend |
+|-------|-------------------|---------|
+| macOS | `target_os = "macos"` | Metal (Apple Silicon + Intel Mac) |
+| Windows / Linux | `gpu-vulkan` | Vulkan (AMD, Intel iGPU, NVIDIA) |
+| Windows / Linux | `gpu-cuda` | NVIDIA CUDA |
+| Optional | `gpu-sycl` | Intel oneAPI (advanced; not primary for Intel) |
+
+**Release matrix (planned):** Separate installers per backend — see [GPU_BACKENDS.md](./GPU_BACKENDS.md).
+
+**Future (Phase 0.6+):** Runtime hardware probe to recommend the correct download variant; Apple **Core ML** encoder path on macOS (in addition to Metal ggml).
 
 ```
-if macOS && Apple Silicon && CoreML model present → Core ML encoder
-else if CUDA available → CUDA
-else if Vulkan available → Vulkan
-else → CPU (thread pool sized to physical cores - 1)
+# Aspirational runtime selection (not yet implemented)
+if macOS && CoreML model present → Core ML encoder
+else if build includes CUDA && NVIDIA GPU present → use GPU (CUDA build)
+else if build includes Vulkan → use GPU (Vulkan build)
+else if build includes Metal → use GPU (Metal build)
+else → CPU
 ```
 
 ---

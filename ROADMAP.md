@@ -49,11 +49,69 @@ gantt
 | Minimal UI: pick file → show transcript | 1 | Desktop window with end-to-end flow |
 
 **Exit criteria:**
-- [ ] One imported WAV → timestamped text on screen
-- [ ] Zero network calls during transcription (verify with firewall)
-- [ ] Runs on your primary OS (Windows or Mac)
+- [x] One imported WAV → timestamped text on screen
+- [x] Zero network calls during transcription (verify with firewall)
+- [x] Runs on your primary OS (Windows or Mac)
 
 **Agent instruction:** *"Spike wisper-core: whisper.cpp binding, 16kHz pipeline, one Tauri command `transcribe_file`."*
+
+---
+
+## Phase 0.5 — GPU foundation (Agent: 4–6 days | Calendar: ~1–2 weeks) **← current focus**
+
+**Goal:** Solid **cross-desktop** GPU story (Windows, macOS, Linux) before Phase 1 — avoid retrofitting acceleration later.
+
+**Decisions locked:**
+- **All three desktop OSes are first-class** — same release matrix shape on Windows and Linux; Metal on macOS.
+- **Ship full release matrix** (Vulkan + CUDA + Metal artifacts; CPU fallback builds).
+- **Intel GPU → Vulkan build** on Windows and Linux (not SYCL as primary).
+- **CI:** CPU smoke (Linux) + macOS Metal + Windows Vulkan + **Linux Vulkan**.
+
+| Task | Priority | Agent sessions | Status |
+|------|----------|----------------|--------|
+| Cargo features: `gpu-vulkan`, `gpu-cuda`, `gpu-sycl` + compile-time mutual exclusion | P0 | 0.5 | Done |
+| Metal on macOS (Apple Silicon + Intel Mac) | P0 | 0.5 | Done |
+| `ComputeInfo` / UI backend labels | P0 | 0.5 | Done |
+| Windows `dev.ps1` multi-backend (`-GpuBackend auto/vulkan/cuda/cpu`) | P0 | 1 | Done |
+| `GPU_BACKENDS.md` + CHANGELOG + README updates | P0 | 0.5 | Done |
+| Verify CUDA build on NVIDIA hardware | P0 | 1 | Todo |
+| Verify Metal build on macOS (Intel + Apple Silicon if available) | P0 | 1 | Todo |
+| Linux `dev-linux.sh` + Vulkan/CUDA path | P0 | 1 | Done |
+| Tauri Linux dependency check in `dev-linux.sh` | P0 | 0.5 | Done |
+| Verify Linux Vulkan build (Ubuntu/Fedora) | P0 | 1 | Todo |
+| Release naming + About screen shows compiled backend | P1 | 0.5 | Todo |
+| GitHub Actions: CPU smoke test | P0 | 1 | Todo |
+| GitHub Actions: macOS Metal build | P0 | 1 | Todo |
+| GitHub Actions: Linux Vulkan build | P0 | 1 | Todo |
+| GitHub Actions: Windows Vulkan build | P0 | 1–2 | Todo |
+| Download page / README: which artifact for which GPU | P1 | 0.5 | Todo |
+| Deprecate or hide `gpu-sycl` from primary matrix (keep for advanced) | P2 | 0.5 | Todo |
+
+**Exit criteria:**
+- [ ] Verified GPU paths on **all desktop OSes**: Windows (Vulkan + CUDA), macOS (Metal), Linux (Vulkan + CUDA)
+- [ ] CI green: CPU smoke (Linux) + macOS Metal + Windows Vulkan + Linux Vulkan
+- [ ] `dev.ps1`, `dev-macos.sh`, and `dev-linux.sh` documented and working
+- [ ] User can identify which build they installed (About / compute panel)
+- [ ] No Phase 1 work blocked by GPU or platform ambiguity
+
+**Agent instruction:** *"Complete Phase 0.5 per GPU_BACKENDS.md. Do not start YouTube or mic features until exit criteria pass."*
+
+---
+
+## Phase 0.6 — Apple Core ML encoder (Agent: 2–3 days | Calendar: ~1 week)
+
+**Goal:** Faster transcription on Apple Silicon (and compatible Intel Macs) via Core ML encoder — **after** Metal ggml foundation is stable.
+
+| Task | Priority | Agent sessions |
+|------|----------|----------------|
+| Evaluate whisper-rs `coreml` feature vs WhisperKit | P0 | 0.5 |
+| Core ML model packaging / first-run download | P0 | 1 |
+| Fallback to Metal ggml when Core ML unavailable | P0 | 0.5 |
+| Benchmark: 30-min file Metal vs Core ML | P1 | 0.5 |
+
+**Exit criteria:**
+- [ ] Measurable speedup on M-series vs Metal-only build
+- [ ] Graceful fallback when Core ML model missing
 
 ---
 
@@ -138,7 +196,7 @@ gantt
 
 | Task | Platform | Agent sessions |
 |------|----------|----------------|
-| Windows build + CUDA/Vulkan detection | Windows | 2–3 |
+| Windows build + CUDA/Vulkan **release matrix** | Windows | 2–3 |
 | Linux AppImage build + CPU fallback | Linux | 1–2 |
 | macOS Apple Silicon Core ML path | macOS | 2 |
 | CI matrix (GitHub Actions) | All | 1–2 |
@@ -229,11 +287,13 @@ gantt
 
 ## What to build first (recommended order)
 
-1. **Phase 0 spike** — validate whisper.cpp on your daily OS today  
-2. **Phases 1–2** — usable desktop app with **YouTube paste as day-one feature**  
-3. **Phase 4** — Windows/Linux if you’re on Windows primary  
-4. **Phases 5–6** — mobile when desktop is stable  
-5. **Phase 7** — only after core is shippable  
+1. **Phase 0 spike** — validate whisper.cpp on your daily OS *(done)*  
+2. **Phase 0.5 GPU foundation** — multi-backend builds, CI, release matrix **before Phase 1**  
+3. **Phase 0.6 Core ML** — Apple encoder acceleration  
+4. **Phases 1–2** — desktop MVP with YouTube paste, library, export  
+5. **Phase 4** — Linux release parity + installer polish  
+6. **Phases 5–6** — mobile when desktop is stable  
+7. **Phase 7** — only after core is shippable  
 
 ---
 
@@ -278,6 +338,8 @@ After Phase 0, these can run in parallel with coordination:
 
 ## Next action
 
-Start **Phase 0** with this agent prompt:
+**Current:** Phase 0.5 — finish GPU foundation (see table above). Start with CI smoke test + CUDA verification on NVIDIA hardware if available.
 
-> Scaffold a Tauri 2 + React + Rust monorepo named `wisper`. Add whisper.cpp and bundle yt-dlp. Implement `wisper-core/fetch` (URL download) and `wisper-core/transcribe` (offline only). Minimal UI: file picker **and YouTube URL field** → local transcript. Verify zero network during transcription (download may use network).
+When Phase 0.5 exit criteria pass, resume Phase 1:
+
+> Implement Phase 1 per TECHNICAL_ARCHITECTURE.md. Split crates: `fetch` (yt-dlp, network OK) vs `transcribe` (whisper.cpp, network forbidden). YouTube URL field on home screen.

@@ -1,0 +1,169 @@
+# Cross-desktop build matrix: CPU smoke + GPU compile checks on Linux, Windows, and macOS.
+# GPU-first binaries always include ggml-cpu fallback (Intel, AMD, ARM64).
+
+name: Desktop
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+defaults:
+  run:
+    working-directory: wisper
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-cpu:
+    name: CPU smoke (Linux x86_64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            pkg-config \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+      - name: Test wisper-core (CPU)
+        run: cargo test -p wisper-core
+      - name: Check wisper app (CPU)
+        run: cargo check -p wisper
+
+  build-linux-vulkan:
+    name: Linux Vulkan (x86_64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            pkg-config \
+            libssl-dev \
+            libvulkan-dev \
+            vulkan-tools \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+      - name: Install Vulkan SDK
+        uses: humbletim/install-vulkan-sdk@v1.2
+        with:
+          version: 1.4.309.0
+          cache: true
+      - name: Check wisper-core (gpu-vulkan)
+        run: cargo check -p wisper-core --features gpu-vulkan
+      - name: Check wisper app (gpu-vulkan)
+        run: cargo check -p wisper --features gpu-vulkan
+
+  build-linux-arm64-cpu:
+    name: Linux ARM64 CPU
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            pkg-config \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+      - name: Test wisper-core (ARM64 CPU)
+        run: cargo test -p wisper-core
+      - name: Check wisper app (ARM64 CPU)
+        run: cargo check -p wisper
+
+  build-linux-arm64-vulkan:
+    name: Linux ARM64 Vulkan
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            pkg-config \
+            libssl-dev \
+            libvulkan-dev \
+            vulkan-tools \
+            glslc \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+      # humbletim installs x86_64 LunarG tarballs; on ubuntu-24.04-arm glslangValidator fails with "Exec format error".
+      - name: Install Vulkan SDK (ARM64)
+        uses: jakoch/install-vulkan-sdk-action@v1.4.0
+        with:
+          vulkan_version: 1.4.309.0
+          # Avoid stale/incomplete cached SDK trees missing glslc on ARM runners.
+          cache: false
+      - name: Verify Vulkan shader tools
+        run: |
+          echo "VULKAN_SDK=${VULKAN_SDK:-unset}"
+          export PATH="${VULKAN_SDK}/bin:${PATH}"
+          command -v glslc
+          glslc --version
+      - name: Check wisper-core (ARM64 gpu-vulkan)
+        run: |
+          export PATH="${VULKAN_SDK}/bin:${PATH}"
+          cargo check -p wisper-core --features gpu-vulkan
+
+  build-macos-metal:
+    name: macOS Metal (ARM64)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test wisper-core (Metal via macOS target)
+        run: cargo test -p wisper-core
+      - name: Check wisper app (macOS Metal)
+        run: cargo check -p wisper
+
+  build-windows-vulkan:
+    name: Windows Vulkan (x86_64)
+    runs-on: windows-latest
+    env:
+      WISPER_EP_BUILD_ROOT: C:\wisper-build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Vulkan SDK
+        uses: humbletim/install-vulkan-sdk@v1.2
+        with:
+          version: 1.4.309.0
+          cache: true
+      - name: Fetch whisper-rs-sys for Vulkan patch
+        run: cargo fetch --manifest-path wisper-core/Cargo.toml
+      - name: Patch ggml-vulkan CMake (Windows)
+        shell: pwsh
+        run: ./scripts/patch-vulkan-cmake.ps1
+      - name: Prepare ExternalProject build root
+        shell: pwsh
+        run: |
+          if (Test-Path $env:WISPER_EP_BUILD_ROOT) {
+            Remove-Item -Recurse -Force $env:WISPER_EP_BUILD_ROOT
+          }
+          New-Item -ItemType Directory -Force -Path $env:WISPER_EP_BUILD_ROOT | Out-Null
+      # Single check: wisper-core + wisper in one graph avoids two whisper-rs-sys fingerprints
+      # fighting over the same vulkan-shaders-gen ExternalProject prefix on Windows.
+      - name: Check wisper (gpu-vulkan)
+        run: cargo check -p wisper --features gpu-vulkan
