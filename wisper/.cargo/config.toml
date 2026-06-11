@@ -1,8 +1,6 @@
 # CMake is required to build whisper.cpp (whisper-rs-sys).
-# Winget installs to Program Files; Cursor terminals often miss PATH updates.
-# CMAKE_C/CXX_COMPILER are set by dev.ps1 / build-gpu.ps1 (not here — MSVC path varies).
-[env]
-CMAKE = "C:/Program Files/CMake/bin/cmake.exe"
+# Do not set CMAKE here — a Windows-only path breaks Linux/macOS CI and cross-platform builds.
+# Local Windows dev sets CMAKE via dev.ps1 / build-gpu.ps1 when Program Files CMake is not on PATH.
 
 # Metal / Accelerate linking for whisper.cpp on Apple Silicon and Intel Macs.
 [target.aarch64-apple-darwin]
