@@ -2,7 +2,7 @@
 # 1. Inherit parent Visual Studio generator for nested vulkan-shaders-gen
 # 2. Build ExternalProject under a space-free path (MSBuild breaks on spaced OneDrive paths)
 
-$marker = "WIN32_NATIVE_MSVC_COMPILER_PATCH"
+$marker = "WIN32_NATIVE_MSVC_COMPILER_PATCH_V2"
 
 $epSetupBlock = @"
 
@@ -25,7 +25,10 @@ $epSetupBlock = @"
         endif()
         string(REPLACE "\\" "/" _GGML_VULKAN_EP_ROOT "`${_GGML_VULKAN_EP_ROOT}")
         file(MAKE_DIRECTORY "`${_GGML_VULKAN_EP_ROOT}")
-        set(_GGML_VULKAN_EP_PREFIX "`${_GGML_VULKAN_EP_ROOT}/vulkan-shaders-gen-prefix")
+        # Unique per whisper-rs-sys out dir — shared prefix breaks when cargo rebuilds with a new fingerprint (CI: wisper-core then wisper).
+        string(SHA256 "`${CMAKE_CURRENT_LIST_DIR}" _GGML_VULKAN_EP_ID)
+        string(SUBSTRING "`${_GGML_VULKAN_EP_ID}" 0 16 _GGML_VULKAN_EP_ID)
+        set(_GGML_VULKAN_EP_PREFIX "`${_GGML_VULKAN_EP_ROOT}/`${_GGML_VULKAN_EP_ID}/vulkan-shaders-gen-prefix")
     endif()
 "@
 
@@ -51,6 +54,7 @@ function Remove-ExistingPatchBlock {
     param([string]$Content)
 
     $patterns = @(
+        '(?s)\r?\n    # WIN32_NATIVE_MSVC_COMPILER_PATCH_V2[^\r\n]*\r?\n.*?(?=\r?\n    ExternalProject_Add\(\r?\n)',
         '(?s)\r?\n    # WIN32_NATIVE_MSVC_COMPILER_PATCH[^\r\n]*\r?\n.*?(?=\r?\n    ExternalProject_Add\(\r?\n)'
     )
     foreach ($pattern in $patterns) {
@@ -77,6 +81,7 @@ function Test-AlreadyPatched {
 
     return (
         ($Content -match [regex]::Escape($marker)) -and
+        ($Content -match '_GGML_VULKAN_EP_ID') -and
         ($Content -match 'PREFIX "\$\{_GGML_VULKAN_EP_PREFIX\}"') -and
         ($Content -match 'CMAKE_GENERATOR "\$\{_GGML_VULKAN_EP_GENERATOR\}"')
     )

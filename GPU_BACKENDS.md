@@ -145,6 +145,7 @@ CUDA compile jobs (Windows/Linux) can be added when CUDA toolkit caching is set 
 | GPU button disabled | CPU-only build | Rebuild with `--features gpu-vulkan` (or use `dev.ps1`) |
 | `failed to encode` / `-6` on GPU | Stale whisper-rs-sys cache or wrong backend binary | `cargo clean -p whisper-rs-sys`, rebuild; match backend to hardware |
 | Vulkan build fails at `vulkan-shaders-gen` | Missing MSVC or path with spaces | Run `.\dev.ps1`; ensure `WISPER_EP_BUILD_ROOT` has no spaces |
+| CMake: source does not match cache (`vulkan-shaders`) | Shared `WISPER_EP_BUILD_ROOT` reused across two `whisper-rs-sys` builds | Re-run `.\scripts\patch-vulkan-cmake.ps1` (V2 uses per-build prefix); on CI, patch runs after `wisper-core` check |
 | CUDA build can't find toolkit | `CUDA_PATH` unset | Install CUDA Toolkit; set `CUDA_PATH` |
 | Vulkan build fails on Linux | Missing dev packages | Install `libvulkan-dev vulkan-tools`; see Tauri Linux prerequisites |
 | Auto picked CUDA on AMD/Intel machine | NVIDIA driver present without suitable GPU build | Use `-GpuBackend vulkan` (Windows) or `--gpu-backend vulkan` (Linux) |

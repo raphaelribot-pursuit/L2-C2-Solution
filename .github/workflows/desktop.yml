@@ -148,5 +148,9 @@ jobs:
         run: ./scripts/patch-vulkan-cmake.ps1
       - name: Check wisper-core (gpu-vulkan)
         run: cargo check -p wisper-core --features gpu-vulkan
+      # wisper-core and wisper can produce different whisper-rs-sys fingerprints; re-patch out dirs.
+      - name: Re-apply Vulkan CMake patch (post wisper-core)
+        shell: pwsh
+        run: ./scripts/patch-vulkan-cmake.ps1
       - name: Check wisper app (gpu-vulkan)
         run: cargo check -p wisper --features gpu-vulkan
