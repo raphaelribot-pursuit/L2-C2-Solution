@@ -1,0 +1,136 @@
+# Cross-desktop build matrix: CPU smoke + GPU compile checks on Linux, Windows, and macOS.
+# GPU-first binaries always include ggml-cpu fallback (Intel, AMD, ARM64).
+
+name: Desktop
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+defaults:
+  run:
+    working-directory: wisper
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-cpu:
+    name: CPU smoke (Linux x86_64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            pkg-config \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+      - name: Test wisper-core (CPU)
+        run: cargo test -p wisper-core
+      - name: Check wisper app (CPU)
+        run: cargo check -p wisper
+
+  build-linux-vulkan:
+    name: Linux Vulkan (x86_64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            pkg-config \
+            libssl-dev \
+            libvulkan-dev \
+            vulkan-tools \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+      - name: Check wisper-core (gpu-vulkan)
+        run: cargo check -p wisper-core --features gpu-vulkan
+      - name: Check wisper app (gpu-vulkan)
+        run: cargo check -p wisper --features gpu-vulkan
+
+  build-linux-arm64-cpu:
+    name: Linux ARM64 CPU
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            pkg-config \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+      - name: Test wisper-core (ARM64 CPU)
+        run: cargo test -p wisper-core
+      - name: Check wisper app (ARM64 CPU)
+        run: cargo check -p wisper
+
+  build-linux-arm64-vulkan:
+    name: Linux ARM64 Vulkan
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            pkg-config \
+            libssl-dev \
+            libvulkan-dev \
+            vulkan-tools \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+      - name: Check wisper-core (ARM64 gpu-vulkan)
+        run: cargo check -p wisper-core --features gpu-vulkan
+
+  build-macos-metal:
+    name: macOS Metal (ARM64)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test wisper-core (Metal via macOS target)
+        run: cargo test -p wisper-core
+      - name: Check wisper app (macOS Metal)
+        run: cargo check -p wisper
+
+  build-windows-vulkan:
+    name: Windows Vulkan (x86_64)
+    runs-on: windows-latest
+    env:
+      WISPER_EP_BUILD_ROOT: C:\wisper-build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Vulkan SDK
+        uses: humbletim/setup-vulkan@v1.2.1
+      - name: Patch ggml-vulkan CMake (Windows)
+        shell: pwsh
+        run: ./scripts/patch-vulkan-cmake.ps1
+      - name: Check wisper-core (gpu-vulkan)
+        run: cargo check -p wisper-core --features gpu-vulkan
+      - name: Check wisper app (gpu-vulkan)
+        run: cargo check -p wisper --features gpu-vulkan
