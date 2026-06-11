@@ -108,10 +108,11 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev
-      - name: Install Vulkan SDK
-        uses: humbletim/install-vulkan-sdk@v1.2
+      # humbletim installs x86_64 LunarG tarballs; on ubuntu-24.04-arm glslangValidator fails with "Exec format error".
+      - name: Install Vulkan SDK (ARM64)
+        uses: jakoch/install-vulkan-sdk-action@v1.4.0
         with:
-          version: 1.4.309.0
+          vulkan_version: 1.4.309.0
           cache: true
       - name: Check wisper-core (ARM64 gpu-vulkan)
         run: cargo check -p wisper-core --features gpu-vulkan

@@ -131,7 +131,7 @@ GitHub Actions workflow: [`.github/workflows/desktop.yml`](./.github/workflows/d
 | `test-cpu` | ubuntu-latest | none | CPU smoke + `wisper-core` tests |
 | `build-linux-vulkan` | ubuntu-latest | `gpu-vulkan` | Linux x86_64 Vulkan compile |
 | `build-linux-arm64-cpu` | ubuntu-24.04-arm | none | ARM64 CPU compatibility |
-| `build-linux-arm64-vulkan` | ubuntu-24.04-arm | `gpu-vulkan` | ARM64 Vulkan compile |
+| `build-linux-arm64-vulkan` | ubuntu-24.04-arm | `gpu-vulkan` | ARM64 Vulkan compile (`jakoch/install-vulkan-sdk-action` — LunarG SDK is x86_64-only) |
 | `build-macos-metal` | macos-latest | *(macOS default)* | Metal binary |
 | `build-windows-vulkan` | windows-latest | `gpu-vulkan` | Windows Vulkan compile |
 
