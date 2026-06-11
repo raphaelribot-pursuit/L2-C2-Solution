@@ -54,11 +54,14 @@ jobs:
             libssl-dev \
             libvulkan-dev \
             vulkan-tools \
-            shaderc \
-            glslang-tools \
             libwebkit2gtk-4.1-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev
+      - name: Install Vulkan SDK
+        uses: humbletim/install-vulkan-sdk@v1.2
+        with:
+          version: 1.4.309.0
+          cache: true
       - name: Check wisper-core (gpu-vulkan)
         run: cargo check -p wisper-core --features gpu-vulkan
       - name: Check wisper app (gpu-vulkan)
@@ -102,11 +105,14 @@ jobs:
             libssl-dev \
             libvulkan-dev \
             vulkan-tools \
-            shaderc \
-            glslang-tools \
             libwebkit2gtk-4.1-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev
+      - name: Install Vulkan SDK
+        uses: humbletim/install-vulkan-sdk@v1.2
+        with:
+          version: 1.4.309.0
+          cache: true
       - name: Check wisper-core (ARM64 gpu-vulkan)
         run: cargo check -p wisper-core --features gpu-vulkan
 
@@ -135,7 +141,7 @@ jobs:
           version: 1.4.309.0
           cache: true
       - name: Fetch whisper-rs-sys for Vulkan patch
-        run: cargo fetch -p wisper-core --features gpu-vulkan
+        run: cargo fetch --manifest-path wisper-core/Cargo.toml --features gpu-vulkan
       - name: Patch ggml-vulkan CMake (Windows)
         shell: pwsh
         run: ./scripts/patch-vulkan-cmake.ps1
