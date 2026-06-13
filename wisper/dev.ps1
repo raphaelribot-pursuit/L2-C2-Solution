@@ -170,7 +170,7 @@ function Get-CudaPathFromRegistry {
             continue
         }
         $versions = Get-ChildItem $keyRoot -ErrorAction SilentlyContinue |
-            Sort-Object { [version]$_.PSChildName } -Descending
+            Sort-Object { [version]($_.PSChildName.TrimStart('v')) } -Descending
         foreach ($ver in $versions) {
             $installDir = (Get-ItemProperty -Path $ver.PSPath -Name InstallDir -ErrorAction SilentlyContinue).InstallDir
             if ($installDir -and (Test-Path $installDir)) {

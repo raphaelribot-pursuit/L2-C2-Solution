@@ -62,12 +62,13 @@ fn file_stem(path: &str) -> String {
 }
 
 fn yt_dlp_candidates(app: &tauri::AppHandle) -> Vec<PathBuf> {
+    let exe_name = if cfg!(windows) { "yt-dlp.exe" } else { "yt-dlp" };
     let mut candidates = Vec::new();
     if let Ok(resource) = app.path().resource_dir() {
-        candidates.push(resource.join("bin").join("yt-dlp.exe"));
-        candidates.push(resource.join("yt-dlp.exe"));
+        candidates.push(resource.join("bin").join(exe_name));
+        candidates.push(resource.join(exe_name));
     }
-    candidates.push(app_data_dir(app).join("bin").join("yt-dlp.exe"));
+    candidates.push(app_data_dir(app).join("bin").join(exe_name));
     candidates
 }
 

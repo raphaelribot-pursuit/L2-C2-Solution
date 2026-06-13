@@ -109,7 +109,7 @@ impl Storage {
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs() as i64)
             .unwrap_or(0);
-        let duration_ms = segments.last().map(|s| s.end_ms);
+        let duration_ms = segments.iter().map(|s| s.end_ms).max();
 
         let tx = self
             .conn

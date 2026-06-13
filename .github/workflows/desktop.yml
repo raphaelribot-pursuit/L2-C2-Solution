@@ -30,6 +30,7 @@ jobs:
             cmake \
             pkg-config \
             libssl-dev \
+            libasound2-dev \
             libwebkit2gtk-4.1-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev
@@ -54,6 +55,7 @@ jobs:
             libssl-dev \
             libvulkan-dev \
             vulkan-tools \
+            libasound2-dev \
             libwebkit2gtk-4.1-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev
@@ -81,6 +83,7 @@ jobs:
             cmake \
             pkg-config \
             libssl-dev \
+            libasound2-dev \
             libwebkit2gtk-4.1-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev
@@ -106,6 +109,7 @@ jobs:
             libvulkan-dev \
             vulkan-tools \
             glslc \
+            libasound2-dev \
             libwebkit2gtk-4.1-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev
