@@ -256,36 +256,30 @@ function App() {
   }, []);
 
   useEffect(() => {
-    let unlistenDrag: (() => void) | undefined;
-
-    void getCurrentWindow()
-      .onDragDropEvent((event) => {
-        const payload = event.payload;
-        if (payload.type === "over") {
-          setDragOver(true);
-        } else if (payload.type === "leave") {
-          setDragOver(false);
-        } else if (payload.type === "drop") {
-          setDragOver(false);
-          if (busy || isRecording) return;
-          const path = payload.paths.find(isSupportedAudioPath);
-          if (!path) {
-            setError("Drop an audio or video file (wav, mp3, m4a, mp4, …).");
-            return;
-          }
-          setError(null);
-          setAudioPath(path);
-          setRecordingId(null);
-          setSegments([]);
-          setStatus(`Dropped: ${path.split(/[/\\]/).pop()}`);
+    const unlistenPromise = getCurrentWindow().onDragDropEvent((event) => {
+      const payload = event.payload;
+      if (payload.type === "over") {
+        setDragOver(true);
+      } else if (payload.type === "leave") {
+        setDragOver(false);
+      } else if (payload.type === "drop") {
+        setDragOver(false);
+        if (busy || isRecording) return;
+        const path = payload.paths.find(isSupportedAudioPath);
+        if (!path) {
+          setError("Drop an audio or video file (wav, mp3, m4a, mp4, …).");
+          return;
         }
-      })
-      .then((fn) => {
-        unlistenDrag = fn;
-      });
+        setError(null);
+        setAudioPath(path);
+        setRecordingId(null);
+        setSegments([]);
+        setStatus(`Dropped: ${path.split(/[/\\]/).pop()}`);
+      }
+    });
 
     return () => {
-      unlistenDrag?.();
+      void unlistenPromise.then((fn) => fn());
     };
   }, [busy, isRecording]);
 

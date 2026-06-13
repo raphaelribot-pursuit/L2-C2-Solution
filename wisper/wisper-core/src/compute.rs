@@ -112,9 +112,11 @@ pub fn release_artifact_label() -> &'static str {
         _ if cfg!(target_os = "macos") => "wisper-macos-universal",
         _ if cfg!(all(target_os = "windows", feature = "gpu-cuda")) => "wisper-windows-cuda",
         _ if cfg!(all(target_os = "windows", feature = "gpu-vulkan")) => "wisper-windows-vulkan",
+        _ if cfg!(all(target_os = "windows", feature = "gpu-sycl")) => "wisper-windows-sycl",
         _ if cfg!(target_os = "windows") => "wisper-windows-cpu",
         _ if cfg!(all(target_os = "linux", feature = "gpu-cuda")) => "wisper-linux-cuda",
         _ if cfg!(all(target_os = "linux", feature = "gpu-vulkan")) => "wisper-linux-vulkan",
+        _ if cfg!(all(target_os = "linux", feature = "gpu-sycl")) => "wisper-linux-sycl",
         _ if cfg!(target_os = "linux") => "wisper-linux-cpu",
         _ => "wisper-unknown",
     }
