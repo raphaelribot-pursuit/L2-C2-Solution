@@ -36,7 +36,8 @@ Write-Host "This may take several minutes for large models." -ForegroundColor Ye
 try {
     Invoke-WebRequest -Uri $entry.Url -OutFile $dest -UseBasicParsing
 } catch {
-    Write-Error "Download failed: $_"
+    Write-Error "Download failed from $($entry.Url): $_"
+    exit 1
 }
 
 $sizeMb = [math]::Round((Get-Item $dest).Length / 1MB, 1)
