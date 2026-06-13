@@ -71,3 +71,13 @@ wisper/
 |---------|-------------|
 | `npm run tauri:dev` | Windows: runs `dev.ps1` |
 | `npm run tauri -- dev` | Direct Tauri dev (CPU-only unless you pass `--features`) |
+
+## QA scripts
+
+| Script | Purpose |
+|--------|---------|
+| `.\scripts\smoke-test.ps1` | Tier 0 — cargo test, check, npm build (run before every PR) |
+| `.\scripts\phase1-exit-qa.ps1` | Tier 3 preflight + manual Phase 1 checklist |
+| `.\scripts\build-release.ps1` | Local Windows release bundle (verify paths before fixing CI) |
+
+Full QA order: repo root `QA-CHECKLIST.md` and `TODO.md` (local). Release status: `ROADMAP.md`.

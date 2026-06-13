@@ -78,6 +78,7 @@ if (-not $foundModel) {
 
 Write-Host "`n========================================" -ForegroundColor Magenta
 Write-Host " Phase 1 exit QA — manual steps in the app" -ForegroundColor Magenta
+Write-Host " Full matrix: repo root QA-CHECKLIST.md (sections 5–6)" -ForegroundColor Magenta
 Write-Host "========================================" -ForegroundColor Magenta
 Write-Host @"
 
@@ -96,6 +97,7 @@ Launch: cd wisper; .\dev-cuda.ps1  (or use -Launch on this script)
    - Download progress, then transcribe; label shows URL source
    - Cancel mid-download: status should say Download cancelled (not Transcription)
    - Bad URL: status should say Download failed
+   - SSRF: http://127.0.0.1 and http://169.254.169.254 should be rejected (SEC-002)
 
 4. Edit persistence
    - Edit a segment text, quit app fully, reopen — edits remain
@@ -109,6 +111,12 @@ Launch: cd wisper; .\dev-cuda.ps1  (or use -Launch on this script)
 
 7. Mic error surfacing (regression)
    - If mic denied/unplugged: explicit error, not silent empty recording
+
+8. Library + export (Phase 2 minimum)
+   - Search, delete, export TXT (native save dialog only — SEC-001), copy clipboard
+
+9. GPU fallback (if testable)
+   - Amber banner + CPU completion if GPU path fails
 
 "@ -ForegroundColor White
 

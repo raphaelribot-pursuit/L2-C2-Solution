@@ -10,17 +10,24 @@ Privacy-first, local-only clone of **Whisper Notes** — record, import files, o
 | File | Description |
 |------|-------------|
 | [CHANGELOG.md](./CHANGELOG.md) | Release and unreleased change history (committed) |
+| `ROADMAP.md` | Phase plan, Week 2 findings, release status (local) |
+| `TODO.md` | QA-ordered task list (local) |
+| `QA-CHECKLIST.md` | Step-by-step verification sequence (local) |
+| `Aisling Improvement Week 2 PRD - Filled.docx` | Week 2 improvement PRD — progressive disclosure (local) |
+| `Wisper-Security-Audit.docx` | Security audit findings (local) |
 
-Other project docs (`TECHNICAL_ARCHITECTURE.md`, `ROADMAP.md`, `GPU_BACKENDS.md`, PRD `.docx`) stay on each developer machine — not committed to git.
+Other docs (`TECHNICAL_ARCHITECTURE.md`, `GPU_BACKENDS.md`, net-new PRD `.docx`) stay on each developer machine — not committed to git (see `.gitignore`).
 
-## Regenerate PRD
+## Regenerate docs
 
-```bash
+```powershell
 pip install python-docx
-python analyze_and_fill_prd.py
+python analyze_and_fill_prd.py          # net-new build PRD
+python generate_improvement_prd.py      # Week 2 improvement PRD
+python generate_security_audit.py       # security audit docx
 ```
 
-Requires `Aisling Copy of 20260515 PRD Template.docx` in this folder (close in Word if the script cannot copy it).
+Requires template `.docx` files in Downloads or project root (close in Word if copy fails).
 
 ## Principles
 
@@ -30,7 +37,14 @@ Requires `Aisling Copy of 20260515 PRD Template.docx` in this folder (close in W
 
 ## Status
 
-**Phase 0.5 complete · Phase 1 in progress** — mic, file/URL import, drag-and-drop, language select, CUDA verified (RTX 5080). Phase plan lives in local `ROADMAP.md`.
+**Phase 1 feature-complete · beta deploy blocked on release CI**
+
+- Core flows shipped: mic, file/URL import, drag-and-drop, library, export, GPU fallback.
+- SEC-001/002 fixed (save-dialog export, URL SSRF hardening).
+- **Release CI:** tag `v0.2.0-beta.3` failed — Windows CUDA install + macOS/Linux artifact upload paths. No GitHub Release published yet.
+- **Week 2 (next):** guided first screen / progressive disclosure — PRD complete, implementation pending.
+
+Phase plan and QA-ordered tasks: local `ROADMAP.md`, `TODO.md`, `QA-CHECKLIST.md`.
 
 ## Which build should I use?
 
@@ -106,3 +120,13 @@ Linux/macOS:
 cd wisper
 chmod +x scripts/smoke-test.sh && ./scripts/smoke-test.sh
 ```
+
+### Phase 1 exit QA (before beta tag)
+
+```powershell
+cd wisper
+.\scripts\phase1-exit-qa.ps1        # preflight + manual checklist
+.\scripts\phase1-exit-qa.ps1 -Launch  # preflight then dev-cuda.ps1
+```
+
+Full QA order: see root `QA-CHECKLIST.md`.

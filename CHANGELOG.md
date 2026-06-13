@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Week 2 Improvement PRD** — guided first screen + progressive disclosure (local `Aisling Improvement Week 2 PRD - Filled.docx`; regenerate via `generate_improvement_prd.py`).
+- **Local planning docs** — `ROADMAP.md`, `TODO.md`, `QA-CHECKLIST.md` (QA-ordered tasks; not committed — see `.gitignore`).
+- **Security audit doc** — `Wisper-Security-Audit.docx` (local; regenerate via `generate_security_audit.py`).
 - **Phase 1 import flows** — microphone recording (cpal), file picker + drag-and-drop (audio/video), YouTube/URL import via yt-dlp, language select, two-step download → transcribe progress, library source labels (“Downloaded from URL” vs “Fully offline”).
 - **`wisper/scripts/download-model.ps1`** — download GGML models into app data (tiny / base / large-turbo).
 - **Download guide** — README and [GPU_BACKENDS.md](./GPU_BACKENDS.md) “Which installer?” table (NVIDIA → CUDA, AMD/Intel → Vulkan, Mac → Metal, fallback → CPU).
@@ -24,8 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **SEC-001 (High)** — removed arbitrary `write_text_file` IPC; export uses Rust-side `save_transcript_txt_file` with native save dialog only.
+- **SEC-002 (High)** — SSRF hardening in `normalize_url` (blocks private/local IPs, blocked hostnames, embedded credentials) + unit tests in `wisper-core`.
 - **Long MP3 decode truncation** — symphonia can stop at ~50% on some VBR MP3s; Wisper now retries via ffmpeg when decoded duration is >10s shorter than container metadata (verified on 12-min and 59-min files).
-- **Release CI** — macOS bundle sets `MACOSX_DEPLOYMENT_TARGET=10.15`; Windows CUDA release installs CUDA Toolkit on the runner.
+- **Release CI (partial)** — macOS `MACOSX_DEPLOYMENT_TARGET=10.15`; Jimver/cuda-toolkit bumped to v0.2.35 (CUDA 12.6.3 version lookup fixed).
 - **Desktop smoke CI** — CPU smoke job now runs `npm run build` (TypeScript + Vite) after `cargo test`.
 
 ### Fixed (prior)
@@ -45,18 +50,29 @@ Target: **beta deployable** (installable build for trusted testers), then **Phas
 
 | Track | Status |
 |-------|--------|
-| Phase 1 exit QA (manual) | Automated preflight passed — run manual checklist in app when convenient |
+| Phase 1 exit QA (manual) | Automated preflight passed — manual checklist pending (`phase1-exit-qa.ps1`) |
 | Long MP3 decode (ffmpeg fallback) | Done — verified 12-min + 59-min MP3 on CUDA |
-| Release CI (tag builds) | Fixed macOS deployment target + Windows CUDA toolkit install |
+| Release CI (tag builds) | **Blocked** — see beta.3 notes below |
 | Desktop smoke (frontend build in CI) | Done — `npm run build` in CPU smoke job |
 | Tier 1 bug fixes (mic, URL errors, orphan downloads) | Done |
+| Security SEC-001 / SEC-002 | Done — save dialog export + URL SSRF hardening |
+| Security SEC-003+ (CSP, capabilities) | Pending — before wider beta |
 | Video import verify (MP4/MOV) | Automated symphonia test + manual drag-drop |
 | Phase 2 minimum (export, search, delete) | Done — TXT export, clipboard, FTS search, delete |
-| Release pipeline (Tauri bundle + GitHub Releases) | Done — `build-release.ps1` + release workflow on tag |
+| Release pipeline (GitHub Releases) | Workflow exists; **no release published yet** |
 | First-run onboarding (model + yt-dlp) | Done — setup banner + model guard |
-| Tag `v0.2.0-beta.1` | Ready — bump to 0.2.0-beta.1; push tag to trigger release CI |
+| Week 2 UX (progressive disclosure) | PRD done — implementation pending |
+| Version sync (UI vs tags) | Pending — app still `0.2.0-beta.1`; tags at beta.3 |
 
-See [ROADMAP.md](./ROADMAP.md) — **Next action** and Phase 4 exit criteria for full public deploy.
+**Tag `v0.2.0-beta.3`** ([run 27474963688](https://github.com/aislingld-pursuit/L2-Clone-Prodject/actions/runs/27474963688)) — **failed**
+
+- macOS / Linux: Tauri **build succeeded** but artifact **upload failed** (glob mismatch — no `.dmg`/`.app`/`.deb`/`.AppImage` found at workflow paths).
+- Windows CUDA: **CUDA 12.6.3 installer failed** on runner (exit code `3772776473`).
+- Publish GitHub Release: skipped.
+
+**Next:** fix upload paths + Windows CUDA install → tag `v0.2.0-beta.4` → implement Week 2 guided first screen.
+
+See local [ROADMAP.md](./ROADMAP.md), [TODO.md](./TODO.md), [QA-CHECKLIST.md](./QA-CHECKLIST.md).
 
 ### Added (Phase 1 — prior)
 
