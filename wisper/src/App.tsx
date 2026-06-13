@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import "./App.css";
 
@@ -26,6 +27,12 @@ interface ComputeInfo {
   default_backend: "cpu" | "gpu";
   cpu_architecture: string;
   supports_cpu_fallback: boolean;
+}
+
+interface AppAbout extends ComputeInfo {
+  app_version: string;
+  platform_os: string;
+  release_artifact: string;
 }
 
 function computeHint(info: ComputeInfo | null): string {
@@ -79,9 +86,67 @@ interface TranscriptionErrorPayload {
   cancelled: boolean;
 }
 
+interface RecordingStatus {
+  peak: number;
+  duration_ms: number;
+  device_name: string;
+}
+
+interface StopRecordingResult {
+  audio_path: string;
+  duration_ms: number;
+}
+
+interface DownloadProgress {
+  percent: number | null;
+  status: string;
+}
+
+interface YtDlpStatus {
+  available: boolean;
+  path: string | null;
+  hint: string;
+}
+
 type ComputeChoice = "cpu" | "gpu";
 
 const COMPUTE_STORAGE_KEY = "wisper-compute-backend";
+const LANGUAGE_STORAGE_KEY = "wisper-language";
+
+const LANGUAGE_OPTIONS = [
+  { value: "auto", label: "Auto-detect" },
+  { value: "en", label: "English" },
+  { value: "es", label: "Spanish" },
+  { value: "fr", label: "French" },
+  { value: "de", label: "German" },
+  { value: "it", label: "Italian" },
+  { value: "pt", label: "Portuguese" },
+  { value: "zh", label: "Chinese" },
+  { value: "ja", label: "Japanese" },
+  { value: "ko", label: "Korean" },
+  { value: "ar", label: "Arabic" },
+  { value: "hi", label: "Hindi" },
+  { value: "ru", label: "Russian" },
+] as const;
+
+const AUDIO_EXTENSIONS = new Set([
+  "wav",
+  "mp3",
+  "m4a",
+  "flac",
+  "ogg",
+  "aac",
+  "mp4",
+  "mov",
+  "webm",
+  "mkv",
+]);
+
+function isSupportedAudioPath(path: string): boolean {
+  const name = path.split(/[/\\]/).pop() ?? "";
+  const ext = name.includes(".") ? name.split(".").pop()?.toLowerCase() : undefined;
+  return ext ? AUDIO_EXTENSIONS.has(ext) : false;
+}
 
 function formatTimestamp(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
@@ -123,6 +188,19 @@ function App() {
     null,
   );
   const [lastUsedCpuFallback, setLastUsedCpuFallback] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const [aboutInfo, setAboutInfo] = useState<AppAbout | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingStatus, setRecordingStatus] = useState<RecordingStatus | null>(
+    null,
+  );
+  const [language, setLanguage] = useState("auto");
+  const [urlInput, setUrlInput] = useState("");
+  const [ytDlpStatus, setYtDlpStatus] = useState<YtDlpStatus | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(
+    null,
+  );
+  const [dragOver, setDragOver] = useState(false);
 
   const refreshLibrary = useCallback(async () => {
     try {
@@ -156,6 +234,68 @@ function App() {
   }, [refreshLibrary]);
 
   useEffect(() => {
+    const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    if (saved && LANGUAGE_OPTIONS.some((opt) => opt.value === saved)) {
+      setLanguage(saved);
+    }
+
+    invoke<YtDlpStatus>("get_yt_dlp_status")
+      .then(setYtDlpStatus)
+      .catch((e) => setError(String(e)));
+  }, []);
+
+  useEffect(() => {
+    let unlistenDrag: (() => void) | undefined;
+
+    void getCurrentWindow()
+      .onDragDropEvent((event) => {
+        const payload = event.payload;
+        if (payload.type === "over") {
+          setDragOver(true);
+        } else if (payload.type === "leave") {
+          setDragOver(false);
+        } else if (payload.type === "drop") {
+          setDragOver(false);
+          if (busy || isRecording) return;
+          const path = payload.paths.find(isSupportedAudioPath);
+          if (!path) {
+            setError("Drop an audio or video file (wav, mp3, m4a, mp4, …).");
+            return;
+          }
+          setError(null);
+          setAudioPath(path);
+          setRecordingId(null);
+          setSegments([]);
+          setStatus(`Dropped: ${path.split(/[/\\]/).pop()}`);
+        }
+      })
+      .then((fn) => {
+        unlistenDrag = fn;
+      });
+
+    return () => {
+      unlistenDrag?.();
+    };
+  }, [busy, isRecording]);
+
+  useEffect(() => {
+    if (!showAbout) return;
+
+    invoke<AppAbout>("get_app_about")
+      .then(setAboutInfo)
+      .catch((e) => setError(String(e)));
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setShowAbout(false);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showAbout]);
+
+  useEffect(() => {
     const unlistenProgress = listen<TranscriptionProgress>(
       "transcription-progress",
       (event) => {
@@ -175,9 +315,10 @@ function App() {
 
     const unlistenComplete = listen<TranscribeResult>(
       "transcription-complete",
-      async (event) => {
+      async       (event) => {
         setBusy(false);
         setProgress(null);
+        setDownloadProgress(null);
         setRecordingId(event.payload.recording_id);
         setSegments(event.payload.segments);
         setLastUsedCpuFallback(event.payload.used_cpu_fallback);
@@ -205,6 +346,7 @@ function App() {
       (event) => {
         setBusy(false);
         setProgress(null);
+        setDownloadProgress(null);
         setFallbackNotice(null);
         if (event.payload.cancelled) {
           setStatus("Transcription cancelled.");
@@ -216,17 +358,60 @@ function App() {
       },
     );
 
+    const unlistenRecording = listen<RecordingStatus>(
+      "recording-status",
+      (event) => {
+        setRecordingStatus(event.payload);
+      },
+    );
+
+    const unlistenDownload = listen<DownloadProgress>(
+      "download-progress",
+      (event) => {
+        setDownloadProgress(event.payload);
+        const pct = event.payload.percent;
+        setStatus(
+          pct != null
+            ? `Downloading… ${pct}%`
+            : event.payload.status || "Downloading…",
+        );
+      },
+    );
+
+    const unlistenDownloadComplete = listen<{
+      audio_path: string;
+      title: string;
+    }>("download-complete", (event) => {
+      setDownloadProgress(null);
+      setAudioPath(event.payload.audio_path);
+      setStatus(`Downloaded "${event.payload.title}" — transcribing locally…`);
+    });
+
     return () => {
       void unlistenProgress.then((fn) => fn());
       void unlistenFallback.then((fn) => fn());
       void unlistenComplete.then((fn) => fn());
       void unlistenError.then((fn) => fn());
+      void unlistenRecording.then((fn) => fn());
+      void unlistenDownload.then((fn) => fn());
+      void unlistenDownloadComplete.then((fn) => fn());
     };
   }, [refreshLibrary, computeInfo?.cpu_architecture, computeInfo?.gpu_backend]);
+
+  useEffect(() => {
+    if (!isRecording) {
+      setRecordingStatus(null);
+    }
+  }, [isRecording]);
 
   function selectBackend(next: ComputeChoice) {
     setComputeBackend(next);
     localStorage.setItem(COMPUTE_STORAGE_KEY, next);
+  }
+
+  function selectLanguage(next: string) {
+    setLanguage(next);
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
   }
 
   async function pickFile() {
@@ -236,7 +421,7 @@ function App() {
       filters: [
         {
           name: "Audio",
-          extensions: ["wav", "mp3", "m4a", "flac", "ogg", "aac"],
+          extensions: ["wav", "mp3", "m4a", "flac", "ogg", "aac", "mp4", "mov", "webm", "mkv"],
         },
       ],
     });
@@ -270,15 +455,14 @@ function App() {
     }
   }
 
-  async function transcribe() {
-    if (!audioPath) {
-      setError("Select an audio file first.");
-      return;
-    }
-
+  async function transcribeFromPath(
+    path: string,
+    options?: { source?: "mic" | "import" | "url"; title?: string; sourceUrl?: string },
+  ) {
     setBusy(true);
     setError(null);
     setProgress(null);
+    setDownloadProgress(null);
     setFallbackNotice(null);
     setLastUsedCpuFallback(false);
     const deviceLabel =
@@ -290,13 +474,94 @@ function App() {
 
     try {
       await invoke("start_transcription", {
-        audioPath,
+        audioPath: path,
         useGpu: computeBackend === "gpu",
+        source: options?.source,
+        title: options?.title,
+        language,
+        sourceUrl: options?.sourceUrl,
       });
     } catch (e) {
       setBusy(false);
       setError(String(e));
       setStatus("Could not start transcription.");
+    }
+  }
+
+  async function importUrlAndTranscribe() {
+    const trimmed = urlInput.trim();
+    if (!trimmed) {
+      setError("Paste a YouTube or audio URL first.");
+      return;
+    }
+    if (!ytDlpStatus?.available) {
+      setError(ytDlpStatus?.hint ?? "yt-dlp is not available.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setProgress(null);
+    setDownloadProgress({ percent: null, status: "Starting download…" });
+    setFallbackNotice(null);
+    setLastUsedCpuFallback(false);
+    setSegments([]);
+    setStatus("Downloading audio (network)…");
+
+    try {
+      await invoke("start_url_import", {
+        url: trimmed,
+        useGpu: computeBackend === "gpu",
+        language,
+      });
+    } catch (e) {
+      setBusy(false);
+      setDownloadProgress(null);
+      setError(String(e));
+      setStatus("Could not start URL import.");
+    }
+  }
+
+  async function transcribe() {
+    if (!audioPath) {
+      setError("Select an audio file first.");
+      return;
+    }
+    await transcribeFromPath(audioPath, { source: "import" });
+  }
+
+  async function startRecording() {
+    setError(null);
+    try {
+      const status = await invoke<RecordingStatus>("start_recording");
+      setIsRecording(true);
+      setRecordingStatus(status);
+      setAudioPath(null);
+      setRecordingId(null);
+      setSegments([]);
+      setStatus(`Recording from ${status.device_name}…`);
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  async function stopRecordingAndTranscribe() {
+    setError(null);
+    try {
+      const result = await invoke<StopRecordingResult>("stop_recording");
+      setIsRecording(false);
+      setRecordingStatus(null);
+      setAudioPath(result.audio_path);
+      const title = `Voice memo ${new Date().toLocaleString()}`;
+      setStatus(
+        `Saved ${formatTimestamp(result.duration_ms)} — transcribing locally…`,
+      );
+      await transcribeFromPath(result.audio_path, { source: "mic", title });
+    } catch (e) {
+      setIsRecording(false);
+      setRecordingStatus(null);
+      setError(String(e));
+      setStatus("Recording failed.");
     }
   }
 
@@ -328,20 +593,108 @@ function App() {
   }
 
   const gpuLabel = computeInfo?.gpu_backend ?? "GPU";
-  const transcribing = busy && progress !== null;
-  const progressPercent = progress?.percent ?? 0;
+  const downloading = busy && downloadProgress !== null;
+  const progressPercent = progress?.percent ?? downloadProgress?.percent ?? 0;
+  const progressLabel = downloading
+    ? downloadProgress?.status ?? "Downloading…"
+    : progress
+      ? `${progressPercent}% · ${formatElapsed(progress.elapsed_ms)} elapsed`
+      : "Loading model…";
 
   return (
     <main className="app">
       <header className="header">
-        <div>
+        <div className="header-main">
           <p className="eyebrow">Phase 1 · local-first</p>
           <h1>Wisper</h1>
           <p className="subtitle">
             Transcription runs entirely on your machine via whisper.cpp.
           </p>
         </div>
+        <button
+          type="button"
+          className="about-trigger"
+          onClick={() => setShowAbout(true)}
+          aria-haspopup="dialog"
+        >
+          About
+        </button>
       </header>
+
+      {showAbout && (
+        <div
+          className="about-backdrop"
+          role="presentation"
+          onClick={() => setShowAbout(false)}
+        >
+          <div
+            className="about-dialog panel"
+            role="dialog"
+            aria-labelledby="about-title"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="about-header">
+              <h2 id="about-title">About Wisper</h2>
+              <button
+                type="button"
+                className="about-close"
+                onClick={() => setShowAbout(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            {aboutInfo ? (
+              <dl className="about-details">
+                <div>
+                  <dt>Version</dt>
+                  <dd>{aboutInfo.app_version}</dd>
+                </div>
+                <div>
+                  <dt>Platform</dt>
+                  <dd>{aboutInfo.platform_os}</dd>
+                </div>
+                <div>
+                  <dt>Release artifact</dt>
+                  <dd>
+                    <code>{aboutInfo.release_artifact}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Compiled GPU backend</dt>
+                  <dd>
+                    {aboutInfo.gpu_available
+                      ? aboutInfo.gpu_backend ?? "GPU"
+                      : "None (CPU-only build)"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Default compute</dt>
+                  <dd>{aboutInfo.default_backend.toUpperCase()}</dd>
+                </div>
+                <div>
+                  <dt>Host CPU</dt>
+                  <dd>{aboutInfo.cpu_architecture}</dd>
+                </div>
+                <div>
+                  <dt>GPU → CPU fallback</dt>
+                  <dd>
+                    {aboutInfo.supports_cpu_fallback ? "Enabled" : "Not available"}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="hint">Loading build info…</p>
+            )}
+            <p className="hint about-footnote">
+              Each installer links one GPU stack (Vulkan, CUDA, or Metal). Use the
+              artifact that matches your GPU — see{" "}
+              <code>GPU_BACKENDS.md</code> in the repo.
+            </p>
+          </div>
+        </div>
+      )}
 
       <section className="panel">
         <h2 className="panel-title">Compute</h2>
@@ -382,15 +735,61 @@ function App() {
       </section>
 
       <section className="panel">
+        <h2 className="panel-title">Language</h2>
+        <label className="field-label" htmlFor="language-select">
+          Transcription language
+        </label>
+        <select
+          id="language-select"
+          className="language-select"
+          value={language}
+          onChange={(e) => selectLanguage(e.target.value)}
+          disabled={busy || isRecording}
+        >
+          {LANGUAGE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <p className="hint">
+          Auto-detect works for most imports. Pick a language if results are wrong.
+        </p>
+      </section>
+
+      <section className={`panel import-panel${dragOver ? " drag-over" : ""}`}>
+        <h2 className="panel-title">Record or import</h2>
+        <p className="drop-hint">
+          Drop an audio or video file here, or use the buttons below.
+        </p>
         <div className="actions">
-          <button type="button" onClick={pickFile} disabled={busy}>
+          {!isRecording ? (
+            <button
+              type="button"
+              className="record"
+              onClick={startRecording}
+              disabled={busy}
+            >
+              Record
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="record stop"
+              onClick={stopRecordingAndTranscribe}
+              disabled={busy}
+            >
+              Stop & transcribe
+            </button>
+          )}
+          <button type="button" onClick={pickFile} disabled={busy || isRecording}>
             Choose audio file
           </button>
           <button
             type="button"
             className="primary"
             onClick={transcribe}
-            disabled={busy || !audioPath}
+            disabled={busy || isRecording || !audioPath}
           >
             {busy ? "Transcribing…" : "Transcribe"}
           </button>
@@ -401,19 +800,77 @@ function App() {
           )}
         </div>
 
+        <div className="url-import">
+          <label className="field-label" htmlFor="url-input">
+            Import from URL
+          </label>
+          <div className="url-row">
+            <input
+              id="url-input"
+              type="url"
+              className="url-input"
+              placeholder="https://www.youtube.com/watch?v=…"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              disabled={busy || isRecording}
+            />
+            <button
+              type="button"
+              className="primary"
+              onClick={importUrlAndTranscribe}
+              disabled={busy || isRecording || !ytDlpStatus?.available || !urlInput.trim()}
+              title={
+                ytDlpStatus?.available
+                  ? undefined
+                  : "Install yt-dlp first (see hint below)"
+              }
+            >
+              Download & transcribe
+            </button>
+          </div>
+          {ytDlpStatus && (
+            <p className={`hint${ytDlpStatus.available ? "" : " warn"}`}>
+              {ytDlpStatus.hint}
+            </p>
+          )}
+        </div>
+
+        {isRecording && (
+          <div className="recording-block" aria-live="polite">
+            <div
+              className="level-track"
+              role="meter"
+              aria-valuenow={Math.round((recordingStatus?.peak ?? 0) * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Input level"
+            >
+              <div
+                className="level-fill"
+                style={{
+                  width: `${Math.min(100, Math.round((recordingStatus?.peak ?? 0) * 100))}%`,
+                }}
+              />
+            </div>
+            <p className="recording-meta">
+              {recordingStatus
+                ? `${formatElapsed(recordingStatus.duration_ms)} · ${recordingStatus.device_name}`
+                : "Starting microphone…"}
+            </p>
+          </div>
+        )}
+
         {busy && (
           <div className="progress-block" aria-live="polite">
             <div className="progress-track" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100}>
               <div
                 className="progress-fill"
-                style={{ width: `${Math.max(progressPercent, transcribing ? 2 : 0)}%` }}
+                style={{ width: `${Math.max(progressPercent, busy ? 2 : 0)}%` }}
               />
             </div>
             <p className="progress-meta">
-              {progress
-                ? `${progressPercent}% · ${formatElapsed(progress.elapsed_ms)} elapsed`
-                : "Loading model…"}
-              {progress?.duration_ms
+              {progressLabel}
+              {!downloading && progress?.duration_ms
                 ? ` · ${formatTimestamp(progress.duration_ms)} audio`
                 : ""}
             </p>
@@ -453,6 +910,7 @@ function App() {
                 >
                   <span className="library-title">{item.title}</span>
                   <span className="library-meta">
+                    {item.source === "mic" ? "Mic · " : item.source === "url" ? "URL · " : ""}
                     {formatDate(item.created_at)}
                     {item.duration_ms != null && ` · ${formatTimestamp(item.duration_ms)}`}
                   </span>

@@ -10,7 +10,7 @@ use symphonia::core::probe::Hint;
 
 use crate::error::WisperError;
 
-const TARGET_SAMPLE_RATE: u32 = 16_000;
+pub(crate) const TARGET_SAMPLE_RATE: u32 = 16_000;
 
 /// Load any supported audio file and return mono f32 PCM at 16 kHz (Whisper input).
 pub fn load_audio_pcm(path: &Path) -> Result<Vec<f32>, WisperError> {
@@ -168,7 +168,7 @@ fn int_samples_to_f32(
     }
 }
 
-fn downmix_to_mono(samples: &[f32], channels: usize) -> Vec<f32> {
+pub(crate) fn downmix_to_mono(samples: &[f32], channels: usize) -> Vec<f32> {
     if channels <= 1 {
         return samples.to_vec();
     }
@@ -179,7 +179,7 @@ fn downmix_to_mono(samples: &[f32], channels: usize) -> Vec<f32> {
         .collect()
 }
 
-fn resample_linear(samples: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
+pub(crate) fn resample_linear(samples: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
     if from_rate == to_rate || samples.is_empty() {
         return samples.to_vec();
     }
@@ -198,6 +198,45 @@ fn resample_linear(samples: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
     }
 
     out
+}
+
+/// Resample captured mono PCM and write 16 kHz WAV for Whisper.
+pub fn save_mic_wav(path: &Path, raw_mono: &[f32], capture_rate: u32) -> Result<u64, WisperError> {
+    let pcm = resample_linear(raw_mono, capture_rate, TARGET_SAMPLE_RATE);
+    write_wav_i16(path, &pcm, TARGET_SAMPLE_RATE)?;
+    Ok((pcm.len() as u64 * 1000) / TARGET_SAMPLE_RATE as u64)
+}
+
+/// Write mono f32 PCM (-1..1) as 16-bit WAV at the given sample rate.
+pub fn write_wav_i16(path: &Path, samples: &[f32], sample_rate: u32) -> Result<(), WisperError> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| WisperError::Recording(e.to_string()))?;
+    }
+
+    let spec = hound::WavSpec {
+        channels: 1,
+        sample_rate,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+
+    let file = std::fs::File::create(path).map_err(|e| WisperError::Recording(e.to_string()))?;
+    let mut writer = hound::WavWriter::new(std::io::BufWriter::new(file), spec)
+        .map_err(|e| WisperError::Recording(e.to_string()))?;
+
+    for sample in samples {
+        let clamped = sample.clamp(-1.0, 1.0);
+        let int_sample = (clamped * i16::MAX as f32) as i16;
+        writer
+            .write_sample(int_sample)
+            .map_err(|e| WisperError::Recording(e.to_string()))?;
+    }
+
+    writer
+        .finalize()
+        .map_err(|e| WisperError::Recording(e.to_string()))?;
+
+    Ok(())
 }
 
 #[cfg(test)]

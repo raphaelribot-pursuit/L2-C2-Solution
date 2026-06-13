@@ -21,6 +21,12 @@ pub enum WisperError {
     #[error("storage error: {0}")]
     Storage(String),
 
+    #[error("recording error: {0}")]
+    Recording(String),
+
     #[error("transcription cancelled")]
     Cancelled,
+
+    #[error("download failed: {0}")]
+    Fetch(String),
 }

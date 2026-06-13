@@ -1,13 +1,19 @@
+mod mic;
+
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Duration;
 
+use mic::{MicRecorder, MicRecordingStatus};
 use tauri::{Emitter, Manager};
+use uuid::Uuid;
 use wisper_core::{
-    compute_info, resolve_model_path, transcribe_with_engine, ComputeBackend, ComputeInfo,
-    GpuFallbackNotice, RecordingSummary, Storage, TranscribeOptions, TranscriptSegment,
-    TranscriptionProgress, WhisperEngine, WisperError,
+    app_about, compute_info, download_url, resolve_model_path, resolve_yt_dlp, transcribe_with_engine,
+    yt_dlp_status, AppAbout, ComputeBackend, ComputeInfo, DownloadProgress, GpuFallbackNotice,
+    RecordingSource, RecordingSummary, Storage, TranscribeOptions, TranscriptSegment,
+    TranscriptionProgress, WhisperEngine, WisperError, YtDlpStatus,
 };
 
 struct AppState {
@@ -15,6 +21,8 @@ struct AppState {
     engine: Mutex<WhisperEngine>,
     cancel: Arc<AtomicBool>,
     running: Arc<AtomicBool>,
+    recorder: Mutex<Option<MicRecorder>>,
+    recording_active: Arc<AtomicBool>,
 }
 
 fn app_data_dir(app: &tauri::AppHandle) -> PathBuf {
@@ -25,6 +33,10 @@ fn app_data_dir(app: &tauri::AppHandle) -> PathBuf {
 
 fn models_dir(app: &tauri::AppHandle) -> PathBuf {
     app_data_dir(app).join("models")
+}
+
+fn audio_dir(app: &tauri::AppHandle) -> PathBuf {
+    app_data_dir(app).join("audio")
 }
 
 fn db_path(app: &tauri::AppHandle) -> PathBuf {
@@ -49,6 +61,114 @@ fn file_stem(path: &str) -> String {
         .unwrap_or_else(|| "Untitled".into())
 }
 
+fn yt_dlp_candidates(app: &tauri::AppHandle) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+    if let Ok(resource) = app.path().resource_dir() {
+        candidates.push(resource.join("bin").join("yt-dlp.exe"));
+        candidates.push(resource.join("yt-dlp.exe"));
+    }
+    candidates.push(app_data_dir(app).join("bin").join("yt-dlp.exe"));
+    candidates
+}
+
+fn transcribe_options_from_language(language: Option<String>) -> TranscribeOptions {
+    let whisper_lang = language.and_then(|l| {
+        let trimmed = l.trim().to_lowercase();
+        if trimmed.is_empty() || trimmed == "auto" {
+            None
+        } else {
+            Some(trimmed)
+        }
+    });
+    TranscribeOptions {
+        language: whisper_lang,
+        verbose_logging: false,
+    }
+}
+
+fn language_for_storage(language: Option<&str>) -> Option<&str> {
+    language.and_then(|l| {
+        let trimmed = l.trim();
+        if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("auto") {
+            None
+        } else {
+            Some(trimmed)
+        }
+    })
+}
+
+fn run_transcription_job(
+    app_handle: &tauri::AppHandle,
+    path: &Path,
+    backend: ComputeBackend,
+    options: TranscribeOptions,
+    recording_source: RecordingSource,
+    title: String,
+    source_url: Option<String>,
+    language_label: Option<String>,
+    cancel: Arc<AtomicBool>,
+) -> Result<TranscribeResult, WisperError> {
+    let app_state = app_handle.state::<AppState>();
+    let model = model_path(app_handle);
+    let source_label = recording_source.as_str().to_string();
+
+    let transcription = {
+        let mut engine = app_state
+            .engine
+            .lock()
+            .map_err(|e| WisperError::Storage(e.to_string()))?;
+
+        let progress_app = app_handle.clone();
+        let fallback_app = app_handle.clone();
+        transcribe_with_engine(
+            &mut engine,
+            &model,
+            path,
+            backend,
+            &options,
+            cancel,
+            move |progress: TranscriptionProgress| {
+                let _ = progress_app.emit("transcription-progress", &progress);
+            },
+            Some(Arc::new(move |notice: GpuFallbackNotice| {
+                let _ = fallback_app.emit("transcription-fallback", &notice);
+            })),
+        )?
+    };
+
+    let segments = transcription.segments;
+    let requested_backend = backend_label(transcription.requested_backend).to_string();
+    let actual_backend = backend_label(transcription.actual_backend).to_string();
+    let used_cpu_fallback = transcription.used_cpu_fallback;
+
+    let model_id = model
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned());
+
+    let recording_id = app_state
+        .storage
+        .lock()
+        .map_err(|e| WisperError::Storage(e.to_string()))?
+        .save_transcript(
+            recording_source,
+            &title,
+            path,
+            source_url.as_deref(),
+            language_for_storage(language_label.as_deref()),
+            model_id.as_deref(),
+            &segments,
+        )?;
+
+    Ok(TranscribeResult {
+        recording_id,
+        segments,
+        requested_backend,
+        actual_backend,
+        used_cpu_fallback,
+        source: source_label,
+    })
+}
+
 #[derive(Debug, serde::Serialize, Clone)]
 struct TranscribeResult {
     recording_id: String,
@@ -56,12 +176,26 @@ struct TranscribeResult {
     requested_backend: String,
     actual_backend: String,
     used_cpu_fallback: bool,
+    source: String,
 }
 
 #[derive(Debug, serde::Serialize, Clone)]
 struct TranscriptionErrorPayload {
     message: String,
     cancelled: bool,
+}
+
+#[derive(Debug, serde::Serialize, Clone)]
+struct DownloadCompletePayload {
+    audio_path: String,
+    title: String,
+    source_url: String,
+}
+
+#[derive(Debug, serde::Serialize, Clone)]
+struct StopRecordingResult {
+    audio_path: String,
+    duration_ms: u64,
 }
 
 #[tauri::command]
@@ -72,6 +206,11 @@ fn get_model_path(app: tauri::AppHandle) -> Result<String, String> {
 #[tauri::command]
 fn get_compute_info() -> ComputeInfo {
     compute_info()
+}
+
+#[tauri::command]
+fn get_app_about(app: tauri::AppHandle) -> AppAbout {
+    app_about(app.package_info().version.to_string())
 }
 
 #[tauri::command]
@@ -122,89 +261,139 @@ fn cancel_transcription(state: tauri::State<'_, AppState>) -> Result<(), String>
 }
 
 #[tauri::command]
+fn start_recording(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<MicRecordingStatus, String> {
+    if state.running.load(Ordering::SeqCst) {
+        return Err("Stop transcription before recording".into());
+    }
+
+    let mut slot = state.recorder.lock().map_err(|e| e.to_string())?;
+    if slot.is_some() {
+        return Err("Already recording".into());
+    }
+
+    let recorder = MicRecorder::start().map_err(|e| e.to_string())?;
+    let status = recorder.status();
+    *slot = Some(recorder);
+
+    state.recording_active.store(true, Ordering::SeqCst);
+
+    let app_handle = app.clone();
+    let active = Arc::clone(&state.recording_active);
+    thread::spawn(move || {
+        while active.load(Ordering::SeqCst) {
+            if let Some(rec) = app_handle.try_state::<AppState>() {
+                if let Ok(guard) = rec.recorder.lock() {
+                    if let Some(ref recorder) = *guard {
+                        let status = recorder.status();
+                        let _ = app_handle.emit("recording-status", &status);
+                    }
+                }
+            }
+            thread::sleep(Duration::from_millis(150));
+        }
+    });
+
+    Ok(status)
+}
+
+#[tauri::command]
+fn stop_recording(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<StopRecordingResult, String> {
+    state.recording_active.store(false, Ordering::SeqCst);
+
+    let recorder = state
+        .recorder
+        .lock()
+        .map_err(|e| e.to_string())?
+        .take()
+        .ok_or_else(|| "Not recording".to_string())?;
+
+    std::fs::create_dir_all(audio_dir(&app)).map_err(|e| e.to_string())?;
+    let filename = format!("{}.wav", Uuid::new_v4());
+    let output = audio_dir(&app).join(filename);
+
+    let result = recorder.stop(&output).map_err(|e| e.to_string())?;
+
+    Ok(StopRecordingResult {
+        audio_path: result.path.to_string_lossy().into_owned(),
+        duration_ms: result.duration_ms,
+    })
+}
+
+#[tauri::command]
+fn get_recording_status(
+    state: tauri::State<'_, AppState>,
+) -> Result<Option<MicRecordingStatus>, String> {
+    let guard = state.recorder.lock().map_err(|e| e.to_string())?;
+    Ok(guard.as_ref().map(MicRecorder::status))
+}
+
+#[tauri::command]
+fn get_yt_dlp_status(app: tauri::AppHandle) -> YtDlpStatus {
+    yt_dlp_status(&yt_dlp_candidates(&app))
+}
+
+#[tauri::command]
 fn start_transcription(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
     audio_path: String,
     use_gpu: bool,
+    source: Option<String>,
+    title: Option<String>,
+    language: Option<String>,
+    source_url: Option<String>,
 ) -> Result<(), String> {
+    if state.recorder.lock().map_err(|e| e.to_string())?.is_some() {
+        return Err("Stop recording before transcribing".into());
+    }
+
     if state.running.swap(true, Ordering::SeqCst) {
         return Err("Transcription already in progress".into());
     }
 
     state.cancel.store(false, Ordering::SeqCst);
 
+    let recording_source = source
+        .as_deref()
+        .and_then(RecordingSource::parse)
+        .unwrap_or(RecordingSource::Import);
+
     let backend = if use_gpu {
         ComputeBackend::Gpu
     } else {
         ComputeBackend::Cpu
     };
-    let model = model_path(&app);
     let path = PathBuf::from(&audio_path);
-    let title = file_stem(&audio_path);
+    let title = title.unwrap_or_else(|| match recording_source {
+        RecordingSource::Mic => "Voice memo".into(),
+        _ => file_stem(&audio_path),
+    });
+
+    let options = transcribe_options_from_language(language.clone());
+    let language_label = language;
 
     let app_handle = app.clone();
     let cancel = Arc::clone(&state.cancel);
     let running = Arc::clone(&state.running);
 
     thread::spawn(move || {
-        let result: Result<TranscribeResult, WisperError> = (|| {
-            let app_state = app_handle.state::<AppState>();
-            let options = TranscribeOptions::default();
-
-            let transcription = {
-                let mut engine = app_state
-                    .engine
-                    .lock()
-                    .map_err(|e| WisperError::Storage(e.to_string()))?;
-
-                let progress_app = app_handle.clone();
-                let fallback_app = app_handle.clone();
-                transcribe_with_engine(
-                    &mut engine,
-                    &model,
-                    &path,
-                    backend,
-                    &options,
-                    cancel,
-                    move |progress: TranscriptionProgress| {
-                        let _ = progress_app.emit("transcription-progress", &progress);
-                    },
-                    Some(Arc::new(move |notice: GpuFallbackNotice| {
-                        let _ = fallback_app.emit("transcription-fallback", &notice);
-                    })),
-                )?
-            };
-
-            let segments = transcription.segments;
-            let requested_backend = backend_label(transcription.requested_backend).to_string();
-            let actual_backend = backend_label(transcription.actual_backend).to_string();
-            let used_cpu_fallback = transcription.used_cpu_fallback;
-
-            let model_id = model
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned());
-
-            let recording_id = app_state
-                .storage
-                .lock()
-                .map_err(|e| WisperError::Storage(e.to_string()))?
-                .save_import_transcript(
-                    &title,
-                    path.as_path(),
-                    Some("en"),
-                    model_id.as_deref(),
-                    &segments,
-                )?;
-
-            Ok(TranscribeResult {
-                recording_id,
-                segments,
-                requested_backend,
-                actual_backend,
-                used_cpu_fallback,
-            })
-        })();
+        let result = run_transcription_job(
+            &app_handle,
+            &path,
+            backend,
+            options,
+            recording_source,
+            title,
+            source_url,
+            language_label,
+            cancel,
+        );
 
         running.store(false, Ordering::SeqCst);
 
@@ -236,6 +425,106 @@ fn start_transcription(
     Ok(())
 }
 
+#[tauri::command]
+fn start_url_import(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+    url: String,
+    use_gpu: bool,
+    language: Option<String>,
+) -> Result<(), String> {
+    if state.recorder.lock().map_err(|e| e.to_string())?.is_some() {
+        return Err("Stop recording before importing a URL".into());
+    }
+
+    if state.running.swap(true, Ordering::SeqCst) {
+        return Err("A download or transcription is already in progress".into());
+    }
+
+    state.cancel.store(false, Ordering::SeqCst);
+
+    let backend = if use_gpu {
+        ComputeBackend::Gpu
+    } else {
+        ComputeBackend::Cpu
+    };
+    let options = transcribe_options_from_language(language.clone());
+    let language_label = language;
+
+    let yt_dlp = resolve_yt_dlp(&yt_dlp_candidates(&app)).map_err(|e| {
+        state.running.store(false, Ordering::SeqCst);
+        e.to_string()
+    })?;
+
+    let output_dir = audio_dir(&app);
+    let app_handle = app.clone();
+    let cancel = Arc::clone(&state.cancel);
+    let running = Arc::clone(&state.running);
+
+    thread::spawn(move || {
+        let result: Result<TranscribeResult, WisperError> = (|| {
+            let download = download_url(
+                &yt_dlp,
+                &url,
+                &output_dir,
+                &cancel,
+                |progress: DownloadProgress| {
+                    let _ = app_handle.emit("download-progress", &progress);
+                },
+            )?;
+
+            let _ = app_handle.emit(
+                "download-complete",
+                DownloadCompletePayload {
+                    audio_path: download.audio_path.to_string_lossy().into_owned(),
+                    title: download.title.clone(),
+                    source_url: download.source_url.clone(),
+                },
+            );
+
+            run_transcription_job(
+                &app_handle,
+                &download.audio_path,
+                backend,
+                options,
+                RecordingSource::Url,
+                download.title,
+                Some(download.source_url),
+                language_label,
+                cancel,
+            )
+        })();
+
+        running.store(false, Ordering::SeqCst);
+
+        match result {
+            Ok(payload) => {
+                let _ = app_handle.emit("transcription-complete", &payload);
+            }
+            Err(WisperError::Cancelled) => {
+                let _ = app_handle.emit(
+                    "transcription-error",
+                    TranscriptionErrorPayload {
+                        message: "Import cancelled.".into(),
+                        cancelled: true,
+                    },
+                );
+            }
+            Err(err) => {
+                let _ = app_handle.emit(
+                    "transcription-error",
+                    TranscriptionErrorPayload {
+                        message: err.to_string(),
+                        cancelled: false,
+                    },
+                );
+            }
+        }
+    });
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -243,22 +532,31 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             std::fs::create_dir_all(models_dir(app.handle())).ok();
+            std::fs::create_dir_all(audio_dir(app.handle())).ok();
             let storage = Storage::open(&db_path(app.handle())).map_err(|e| e.to_string())?;
             app.manage(AppState {
                 storage: Mutex::new(storage),
                 engine: Mutex::new(WhisperEngine::new()),
                 cancel: Arc::new(AtomicBool::new(false)),
                 running: Arc::new(AtomicBool::new(false)),
+                recorder: Mutex::new(None),
+                recording_active: Arc::new(AtomicBool::new(false)),
             });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             get_model_path,
             get_compute_info,
+            get_app_about,
             list_recordings,
             get_transcript,
             update_segment,
+            start_recording,
+            stop_recording,
+            get_recording_status,
+            get_yt_dlp_status,
             start_transcription,
+            start_url_import,
             cancel_transcription
         ])
         .run(tauri::generate_context!())

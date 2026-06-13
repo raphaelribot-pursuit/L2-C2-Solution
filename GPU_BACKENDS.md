@@ -136,6 +136,21 @@ GitHub Actions workflow: [`.github/workflows/desktop.yml`](./.github/workflows/d
 | `build-windows-vulkan` | windows-latest | `gpu-vulkan` | Windows Vulkan compile |
 
 CUDA compile jobs (Windows/Linux) can be added when CUDA toolkit caching is set up; GPU integration tests may use self-hosted NVIDIA runners.
+
+### Local CUDA verification (NVIDIA)
+
+Drivers alone are not enough — install the **CUDA Toolkit** (`nvcc`, `CUDA_PATH`). On Windows with an RTX GPU:
+
+```powershell
+cd wisper
+.\scripts\verify-cuda.ps1        # preflight: nvidia-smi + nvcc
+.\scripts\verify-cuda.ps1 -Build # compile gpu-cuda
+.\dev-cuda.ps1                   # run app; About → wisper-windows-cuda
+```
+
+Transcribe a short clip with **GPU** selected; completion should report **CUDA**, not CPU fallback.
+
+**Verified locally (Windows):** RTX 5080 Laptop GPU, CUDA Toolkit 13.3 — build (`verify-cuda.ps1 -Build`) and GPU transcription smoke test passed.
 ---
 
 ## Troubleshooting
@@ -147,6 +162,7 @@ CUDA compile jobs (Windows/Linux) can be added when CUDA toolkit caching is set 
 | Vulkan build fails at `vulkan-shaders-gen` | Missing MSVC or path with spaces | Run `.\dev.ps1`; ensure `WISPER_EP_BUILD_ROOT` has no spaces |
 | CMake: source does not match cache (`vulkan-shaders`) | Shared `WISPER_EP_BUILD_ROOT` reused across two `whisper-rs-sys` builds | Re-run `.\scripts\patch-vulkan-cmake.ps1` (V2 uses per-build prefix); on CI, patch runs after `wisper-core` check |
 | CUDA build can't find toolkit | `CUDA_PATH` unset | Install CUDA Toolkit; set `CUDA_PATH` |
+| `autocfg` / `indexmap` build: output path is not a writable directory | Project under **OneDrive** or path with spaces | Use `dev.ps1` (sets `CARGO_TARGET_DIR=C:\wisper-build\cargo-target`) or set `CARGO_TARGET_DIR` manually |
 | Vulkan build fails on Linux | Missing dev packages | Install `libvulkan-dev vulkan-tools`; see Tauri Linux prerequisites |
 | Auto picked CUDA on AMD/Intel machine | NVIDIA driver present without suitable GPU build | Use `-GpuBackend vulkan` (Windows) or `--gpu-backend vulkan` (Linux) |
 

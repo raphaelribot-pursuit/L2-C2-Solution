@@ -32,7 +32,7 @@ Requires `Aisling Copy of 20260515 PRD Template.docx` in this folder (close in W
 
 ## Status
 
-**Phase 0 complete · Phase 0.5 (GPU foundation) in progress** — Tauri 2 desktop app with `wisper-core`, SQLite library, background transcription, and multi-backend GPU scaffolding (Vulkan verified on Windows AMD; Metal on macOS; CUDA/SYCL build paths added). See [ROADMAP.md](./ROADMAP.md) and [CHANGELOG.md](./CHANGELOG.md).
+**Phase 0.5 complete · Phase 1 next** — CI green (6 jobs); Windows **Vulkan + CUDA** verified (RTX 5080, CUDA 13.3); About screen + model download scripts. See [ROADMAP.md](./ROADMAP.md).
 
 ## Development (Phase 0)
 

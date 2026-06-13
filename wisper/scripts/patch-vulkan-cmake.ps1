@@ -153,6 +153,7 @@ function Patch-GgmlVulkanCMake {
 }
 
 $wisperDir = Split-Path $PSScriptRoot -Parent
+$targetRoot = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { Join-Path $wisperDir "target" }
 
 $registryRoots = Get-ChildItem "$env:USERPROFILE\.cargo\registry\src" -Directory -ErrorAction SilentlyContinue
 $registryFiles = @()
@@ -160,7 +161,7 @@ foreach ($root in $registryRoots) {
     $registryFiles += Get-ChildItem (Join-Path $root.FullName "whisper-rs-sys-0.15.0\whisper.cpp\ggml\src\ggml-vulkan\CMakeLists.txt") -ErrorAction SilentlyContinue
 }
 
-$outFiles = Get-ChildItem (Join-Path $wisperDir "target\*\build\whisper-rs-sys-*\out\whisper.cpp\ggml\src\ggml-vulkan\CMakeLists.txt") -ErrorAction SilentlyContinue
+$outFiles = Get-ChildItem (Join-Path $targetRoot "*\build\whisper-rs-sys-*\out\whisper.cpp\ggml\src\ggml-vulkan\CMakeLists.txt") -ErrorAction SilentlyContinue
 
 $patched = 0
 foreach ($file in ($registryFiles + $outFiles)) {

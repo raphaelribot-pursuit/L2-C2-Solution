@@ -96,6 +96,48 @@ pub fn compute_info() -> ComputeInfo {
     }
 }
 
+/// Human-readable OS for About / support.
+pub fn platform_os_label() -> &'static str {
+    match () {
+        _ if cfg!(target_os = "windows") => "Windows",
+        _ if cfg!(target_os = "macos") => "macOS",
+        _ if cfg!(target_os = "linux") => "Linux",
+        _ => "Unknown",
+    }
+}
+
+/// Release artifact name matching [GPU_BACKENDS.md] matrix.
+pub fn release_artifact_label() -> &'static str {
+    match () {
+        _ if cfg!(target_os = "macos") => "wisper-macos-universal",
+        _ if cfg!(all(target_os = "windows", feature = "gpu-cuda")) => "wisper-windows-cuda",
+        _ if cfg!(all(target_os = "windows", feature = "gpu-vulkan")) => "wisper-windows-vulkan",
+        _ if cfg!(target_os = "windows") => "wisper-windows-cpu",
+        _ if cfg!(all(target_os = "linux", feature = "gpu-cuda")) => "wisper-linux-cuda",
+        _ if cfg!(all(target_os = "linux", feature = "gpu-vulkan")) => "wisper-linux-vulkan",
+        _ if cfg!(target_os = "linux") => "wisper-linux-cpu",
+        _ => "wisper-unknown",
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppAbout {
+    pub app_version: String,
+    pub platform_os: String,
+    pub release_artifact: String,
+    #[serde(flatten)]
+    pub compute: ComputeInfo,
+}
+
+pub fn app_about(app_version: impl Into<String>) -> AppAbout {
+    AppAbout {
+        app_version: app_version.into(),
+        platform_os: platform_os_label().to_string(),
+        release_artifact: release_artifact_label().to_string(),
+        compute: compute_info(),
+    }
+}
+
 /// Returns the GPU backend compiled into this binary, if any.
 pub fn compiled_gpu_backend() -> Option<GpuBackendKind> {
     if cfg!(target_os = "macos") {
@@ -158,5 +200,10 @@ mod tests {
     fn cpu_architecture_label_is_non_empty() {
         assert!(!cpu_architecture_label().is_empty());
         assert!(!compute_info().cpu_architecture.is_empty());
+    }
+
+    #[test]
+    fn release_artifact_label_is_non_empty() {
+        assert!(!release_artifact_label().is_empty());
     }
 }

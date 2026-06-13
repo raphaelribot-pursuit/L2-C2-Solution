@@ -160,33 +160,76 @@ function Resolve-VulkanSdk {
     return $env:VULKAN_SDK
 }
 
-function Resolve-CudaToolkit {
-    foreach ($var in @("CUDA_PATH", "CUDA_HOME")) {
-        $value = (Get-Item -Path "env:$var" -ErrorAction SilentlyContinue).Value
-        if ($value -and (Test-Path $value)) {
-            if (-not $env:CUDA_PATH) {
-                $env:CUDA_PATH = $value
+function Get-CudaPathFromRegistry {
+    $keyRoots = @(
+        "HKLM:\SOFTWARE\NVIDIA Corporation\GPU Computing Toolkit\CUDA",
+        "HKLM:\SOFTWARE\WOW6432Node\NVIDIA Corporation\GPU Computing Toolkit\CUDA"
+    )
+    foreach ($keyRoot in $keyRoots) {
+        if (-not (Test-Path $keyRoot)) {
+            continue
+        }
+        $versions = Get-ChildItem $keyRoot -ErrorAction SilentlyContinue |
+            Sort-Object { [version]$_.PSChildName } -Descending
+        foreach ($ver in $versions) {
+            $installDir = (Get-ItemProperty -Path $ver.PSPath -Name InstallDir -ErrorAction SilentlyContinue).InstallDir
+            if ($installDir -and (Test-Path $installDir)) {
+                return $installDir.TrimEnd('\')
             }
-            return $env:CUDA_PATH
         }
     }
+    return $null
+}
 
-    $default = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.0"
-    if (Test-Path $default) {
-        $env:CUDA_PATH = $default
-        return $default
+function Resolve-CudaToolkit {
+    foreach ($var in @("CUDA_PATH", "CUDA_HOME", "CUDAToolkit_ROOT")) {
+        $value = (Get-Item -Path "env:$var" -ErrorAction SilentlyContinue).Value
+        if ($value -and (Test-Path $value)) {
+            return $value.TrimEnd('\')
+        }
     }
 
     $cudaRoot = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA"
     if (Test-Path $cudaRoot) {
-        $latest = Get-ChildItem $cudaRoot -Directory | Sort-Object Name -Descending | Select-Object -First 1
+        $latest = Get-ChildItem $cudaRoot -Directory |
+            Sort-Object { [version]($_.Name.TrimStart('v')) } -Descending |
+            Select-Object -First 1
         if ($latest) {
-            $env:CUDA_PATH = $latest.FullName
             return $latest.FullName
         }
     }
 
-    return $null
+    return Get-CudaPathFromRegistry
+}
+
+function Set-CudaBuildEnvironment {
+    param([Parameter(Mandatory = $true)][string]$CudaPath)
+
+    $CudaPath = $CudaPath.TrimEnd('\')
+    $env:CUDA_PATH = $CudaPath
+    $env:CUDA_HOME = $CudaPath
+    $env:CUDAToolkit_ROOT = $CudaPath
+    # MSBuild CUDA targets (ValidateCudaBuild) read CudaToolkitDir; empty string fails the build.
+    $env:CudaToolkitDir = "$CudaPath\"
+
+    $cudaBin = Join-Path $CudaPath "bin"
+    $cudaBinX64 = Join-Path $cudaBin "x64"
+    $pathPrefix = @()
+    if (Test-Path $cudaBinX64) {
+        $pathPrefix += $cudaBinX64
+    }
+    if (Test-Path $cudaBin) {
+        $pathPrefix += $cudaBin
+    }
+    foreach ($dir in $pathPrefix) {
+        if ($env:Path -notlike "*$dir*") {
+            $env:Path = "$dir;$env:Path"
+        }
+    }
+
+    if (-not $env:CMAKE_BUILD_PARALLEL_LEVEL) {
+        $env:CMAKE_BUILD_PARALLEL_LEVEL = "8"
+    }
 }
 
 function Resolve-OneApiRoot {
@@ -267,11 +310,29 @@ function Resolve-GpuBackend {
     return @{ Mode = "cpu"; Feature = $null; Label = "CPU-only (no GPU SDK found)" }
 }
 
-function Initialize-GpuBuildRoot {
+function Get-CargoTargetRoot {
+    if ($env:CARGO_TARGET_DIR) {
+        return $env:CARGO_TARGET_DIR
+    }
+    return Join-Path $PSScriptRoot "target"
+}
+
+function Initialize-LocalBuildPaths {
     if (-not $env:WISPER_EP_BUILD_ROOT) {
         $env:WISPER_EP_BUILD_ROOT = "C:\wisper-build"
     }
     New-Item -ItemType Directory -Force -Path $env:WISPER_EP_BUILD_ROOT | Out-Null
+
+    # OneDrive (and paths with spaces) break cargo build scripts: autocfg "output path is not writable".
+    $needsExternalTarget = $PSScriptRoot -match "OneDrive" -or $PSScriptRoot -match "\s"
+    if ($needsExternalTarget -and -not $env:CARGO_TARGET_DIR) {
+        $env:CARGO_TARGET_DIR = Join-Path $env:WISPER_EP_BUILD_ROOT "cargo-target"
+    }
+    if ($env:CARGO_TARGET_DIR) {
+        New-Item -ItemType Directory -Force -Path $env:CARGO_TARGET_DIR | Out-Null
+        Write-Host "Cargo target dir (outside sync): $($env:CARGO_TARGET_DIR)"
+    }
+
     Write-Host "ExternalProject build root (no spaces): $($env:WISPER_EP_BUILD_ROOT)"
 }
 
@@ -281,13 +342,14 @@ function Invoke-CargoGpuBuild {
         [Parameter(Mandatory = $true)][string]$Label
     )
 
-    Initialize-GpuBuildRoot
+    Initialize-LocalBuildPaths
+    $targetRoot = Get-CargoTargetRoot
     Write-Host "Cleaning whisper-rs-sys cache so CMake picks up backend/toolchain changes..."
     cargo clean -p whisper-rs-sys
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
-    Get-ChildItem (Join-Path $PSScriptRoot "target\debug\build\whisper-rs-sys-*\out\build") -ErrorAction SilentlyContinue |
+    Get-ChildItem (Join-Path $targetRoot "debug\build\whisper-rs-sys-*\out\build") -ErrorAction SilentlyContinue |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     Write-Host "Building with GPU ($Label) — first compile may take several minutes..."
     cargo build -p wisper --features $Feature
@@ -308,6 +370,9 @@ function Invoke-DevCommand {
         if ($env:WISPER_EP_BUILD_ROOT) {
             $extraEnv += "set `"WISPER_EP_BUILD_ROOT=$($env:WISPER_EP_BUILD_ROOT)`""
         }
+        if ($env:CARGO_TARGET_DIR) {
+            $extraEnv += "set `"CARGO_TARGET_DIR=$($env:CARGO_TARGET_DIR)`""
+        }
         if ($env:CMAKE_C_COMPILER) {
             $extraEnv += "set `"CMAKE_C_COMPILER=$($env:CMAKE_C_COMPILER)`""
         }
@@ -323,9 +388,17 @@ function Invoke-DevCommand {
         }
         if ($env:CUDA_PATH) {
             $cudaBin = Join-Path $env:CUDA_PATH "bin"
+            $cudaBinX64 = Join-Path $cudaBin "x64"
             $extraEnv += "set `"CUDA_PATH=$($env:CUDA_PATH)`""
-            if (Test-Path $cudaBin) {
-                $extraEnv += "set `"PATH=$cudaBin;%PATH%`""
+            $extraEnv += "set `"CUDA_HOME=$($env:CUDA_PATH)`""
+            $extraEnv += "set `"CUDAToolkit_ROOT=$($env:CUDA_PATH)`""
+            $extraEnv += "set `"CudaToolkitDir=$($env:CudaToolkitDir)`""
+            $pathAdds = @()
+            if (Test-Path $cudaBinX64) { $pathAdds += $cudaBinX64 }
+            if (Test-Path $cudaBin) { $pathAdds += $cudaBin }
+            if ($pathAdds.Count -gt 0) {
+                $joined = ($pathAdds -join ";") + ";%PATH%"
+                $extraEnv += "set `"PATH=$joined`""
             }
         }
         $envChain = ($extraEnv -join " && ")
@@ -351,6 +424,8 @@ if ($env:Path -notlike "*$cmakeBin*") {
 $selection = Resolve-GpuBackend -Requested $GpuBackend
 Write-Host "GPU backend selection: $($selection.Label) (requested: $GpuBackend)"
 
+Initialize-LocalBuildPaths
+
 if ($selection.Mode -eq "cpu") {
     Write-Host "Running CPU-only build."
     if ($BuildOnly) {
@@ -368,8 +443,6 @@ if (-not $script:MsvcReady) {
     }
     Invoke-DevCommand @("run", "tauri", "--", "dev")
 }
-
-Initialize-GpuBuildRoot
 
 switch ($selection.Mode) {
     "vulkan" {
@@ -399,7 +472,13 @@ switch ($selection.Mode) {
             Write-Error "CUDA Toolkit not found. Install from NVIDIA and set CUDA_PATH, or pass -GpuBackend vulkan for Intel/AMD GPUs."
             exit 1
         }
+        Set-CudaBuildEnvironment -CudaPath $cudaPath
         Write-Host "CUDA Toolkit: $cudaPath"
+        $nvcc = Join-Path $cudaPath "bin\nvcc.exe"
+        if (-not (Test-Path $nvcc)) {
+            Write-Error "CUDA Toolkit path resolved but nvcc.exe is missing at $nvcc. Reinstall the CUDA Toolkit (not just the driver)."
+            exit 1
+        }
         if ($BuildOnly) {
             Invoke-CargoGpuBuild -Feature $selection.Feature -Label $selection.Label
         } else {

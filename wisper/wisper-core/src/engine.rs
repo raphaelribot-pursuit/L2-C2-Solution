@@ -1,6 +1,16 @@
 use std::path::{Path, PathBuf};
+use std::sync::Once;
 
 use whisper_rs::{WhisperContext, WhisperContextParameters};
+
+/// whisper-rs-sys enables `WHISPER_DEBUG` in debug Cargo builds, which dumps every
+/// decoder token to stderr. Redirect logs through whisper-rs hooks (no-op without
+/// log/tracing features) so dev runs stay readable.
+static INSTALL_WHISPER_LOGGING: Once = Once::new();
+
+fn ensure_whisper_logging_quiet() {
+    INSTALL_WHISPER_LOGGING.call_once(whisper_rs::install_logging_hooks);
+}
 
 use crate::compute::{validate_backend, ComputeBackend};
 use crate::error::WisperError;
@@ -18,6 +28,7 @@ pub struct WhisperEngine {
 
 impl WhisperEngine {
     pub fn new() -> Self {
+        ensure_whisper_logging_quiet();
         Self {
             cpu: None,
             gpu: None,

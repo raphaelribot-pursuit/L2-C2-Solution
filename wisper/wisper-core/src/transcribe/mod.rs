@@ -52,7 +52,7 @@ pub struct TranscribeOptions {
 impl Default for TranscribeOptions {
     fn default() -> Self {
         Self {
-            language: Some("en".to_string()),
+            language: None,
             verbose_logging: false,
         }
     }
@@ -135,11 +135,12 @@ pub fn transcribe_pcm(
     if let Some(lang) = options.language.as_deref() {
         params.set_language(Some(lang));
     }
-    params.set_print_special(false);
-    params.set_print_progress(false);
-    params.set_print_realtime(false);
-    // Match the pre-async settings that worked reliably on CPU and Vulkan GPU.
-    params.set_print_timestamps(true);
+    let verbose = options.verbose_logging;
+    params.set_print_special(verbose);
+    params.set_print_progress(verbose);
+    params.set_print_realtime(verbose);
+    params.set_print_timestamps(verbose);
+    params.set_debug_mode(false);
     params.set_token_timestamps(true);
 
     let progress_cb = Arc::clone(&on_progress);

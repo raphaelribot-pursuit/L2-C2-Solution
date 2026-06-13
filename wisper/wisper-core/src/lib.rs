@@ -2,18 +2,22 @@ pub mod audio;
 pub mod compute;
 pub mod engine;
 pub mod error;
+pub mod fetch;
 pub mod model;
 pub mod storage;
 pub mod transcribe;
 
 pub use compute::{
-    compiled_gpu_backend, compute_info, cpu_architecture_label, validate_backend,
-    ComputeBackend, ComputeInfo, GpuBackendKind,
+    app_about, compiled_gpu_backend, compute_info, cpu_architecture_label, platform_os_label,
+    release_artifact_label, validate_backend, AppAbout, ComputeBackend, ComputeInfo,
+    GpuBackendKind,
 };
 pub use engine::WhisperEngine;
 pub use error::WisperError;
 pub use model::resolve_model_path;
-pub use storage::{RecordingSummary, Storage};
+pub use audio::save_mic_wav;
+pub use fetch::{download_url, normalize_url, resolve_yt_dlp, yt_dlp_status, DownloadProgress, UrlDownloadResult, YtDlpStatus};
+pub use storage::{RecordingSource, RecordingSummary, Storage};
 pub use transcribe::{
     transcribe_file, transcribe_with_engine, GpuFallbackNotice, TranscribeOptions,
     TranscriptSegment, TranscriptionProgress, TranscriptionResult,

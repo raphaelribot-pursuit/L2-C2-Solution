@@ -59,11 +59,20 @@ pub enum RecordingSource {
 }
 
 impl RecordingSource {
-    fn as_str(self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::Mic => "mic",
             Self::Import => "import",
             Self::Url => "url",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "mic" => Some(Self::Mic),
+            "import" => Some(Self::Import),
+            "url" => Some(Self::Url),
+            _ => None,
         }
     }
 }
@@ -85,10 +94,12 @@ impl Storage {
         Ok(Self { conn })
     }
 
-    pub fn save_import_transcript(
+    pub fn save_transcript(
         &self,
+        source: RecordingSource,
         title: &str,
         audio_path: &Path,
+        source_url: Option<&str>,
         language: Option<&str>,
         model_id: Option<&str>,
         segments: &[TranscriptSegment],
@@ -107,13 +118,14 @@ impl Storage {
 
         tx.execute(
             "INSERT INTO recordings (id, title, created_at, duration_ms, source, source_url, audio_path, language, model_id)
-             VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, ?8)",
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
                 id,
                 title,
                 created_at,
                 duration_ms,
-                RecordingSource::Import.as_str(),
+                source.as_str(),
+                source_url,
                 audio_path.to_string_lossy(),
                 language,
                 model_id,
@@ -134,6 +146,25 @@ impl Storage {
             .map_err(|e| WisperError::Storage(e.to_string()))?;
 
         Ok(id)
+    }
+
+    pub fn save_import_transcript(
+        &self,
+        title: &str,
+        audio_path: &Path,
+        language: Option<&str>,
+        model_id: Option<&str>,
+        segments: &[TranscriptSegment],
+    ) -> Result<String, WisperError> {
+        self.save_transcript(
+            RecordingSource::Import,
+            title,
+            audio_path,
+            None,
+            language,
+            model_id,
+            segments,
+        )
     }
 
     pub fn list_recordings(&self) -> Result<Vec<RecordingSummary>, WisperError> {
