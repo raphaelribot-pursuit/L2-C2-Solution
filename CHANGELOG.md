@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`wisper/scripts/download-model.ps1`** — download GGML models into app data (tiny / base / large-turbo).
 - **Download guide** — README and [GPU_BACKENDS.md](./GPU_BACKENDS.md) “Which installer?” table (NVIDIA → CUDA, AMD/Intel → Vulkan, Mac → Metal, fallback → CPU).
 - **Phase 1 UI polish** — two-step progress (Download → Transcribe) and library labels.
+- **`wisper/scripts/smoke-test.ps1`** / **`smoke-test.sh`** — local CI-parity smoke (cargo test, cargo check, npm build).
+- **Truncation unit test** — `looks_truncated` threshold logic in `wisper-core`.
 
 ### Changed
 
@@ -24,11 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Long MP3 decode truncation** — symphonia can stop at ~50% on some VBR MP3s; Wisper now retries via ffmpeg when decoded duration is >10s shorter than container metadata (verified on 12-min and 59-min files).
 - **Release CI** — macOS bundle sets `MACOSX_DEPLOYMENT_TARGET=10.15`; Windows CUDA release installs CUDA Toolkit on the runner.
 - **Desktop smoke CI** — CPU smoke job now runs `npm run build` (TypeScript + Vite) after `cargo test`.
-
-### Added
-
-- **`wisper/scripts/smoke-test.ps1`** / **`smoke-test.sh`** — local CI-parity smoke (cargo test, cargo check, npm build).
-- **Truncation unit test** — `looks_truncated` threshold logic in `wisper-core`.
 
 ### Fixed (prior)
 

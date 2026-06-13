@@ -58,7 +58,10 @@ Each installer links **one** GPU backend (or CPU-only). Pick by hardware — see
 - [Node.js](https://nodejs.org/) 20+
 - **CMake** (required to build whisper.cpp)
 - Visual Studio Build Tools (MSVC) on Windows — required for GPU builds
-- **ffmpeg** (recommended) — full-length MP3 import when symphonia truncates early (`winget install ffmpeg`)
+- **ffmpeg** (recommended) — full-length MP3 import when symphonia truncates early:
+  - Windows: `winget install ffmpeg`
+  - macOS: `brew install ffmpeg`
+  - Linux: `sudo apt install ffmpeg` (Debian/Ubuntu) or your distro package manager
 - **GPU (optional):** [Vulkan SDK](https://vulkan.lunarg.com/) and/or [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) on Windows/Linux; Xcode on macOS for Metal
 
 ### Run the app
@@ -100,4 +103,9 @@ cd wisper
 .\scripts\smoke-test.ps1
 ```
 
-Linux/macOS: `chmod +x scripts/smoke-test.sh && ./scripts/smoke-test.sh`
+Linux/macOS:
+
+```bash
+cd wisper
+chmod +x scripts/smoke-test.sh && ./scripts/smoke-test.sh
+```

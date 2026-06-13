@@ -453,6 +453,13 @@ mod tests {
         };
         assert!(!looks_truncated(&within_tolerance));
 
+        let at_threshold = LoadedAudio {
+            pcm: vec![],
+            decoded_duration_ms: 360_000,
+            container_duration_ms: Some(360_000 + TRUNCATION_THRESHOLD_MS),
+        };
+        assert!(!looks_truncated(&at_threshold));
+
         let no_container_metadata = LoadedAudio {
             pcm: vec![],
             decoded_duration_ms: 360_000,
