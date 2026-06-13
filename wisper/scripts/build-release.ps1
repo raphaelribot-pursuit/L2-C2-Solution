@@ -37,7 +37,14 @@ if ($feature) {
 npm run tauri -- @tauriArgs
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-$bundleRoot = Join-Path $Root "src-tauri\target\release\bundle"
+$bundleCandidates = @(
+    (Join-Path $Root "target\release\bundle"),
+    (Join-Path $Root "src-tauri\target\release\bundle")
+)
+$bundleRoot = $bundleCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $bundleRoot) {
+    $bundleRoot = $bundleCandidates[0]
+}
 Write-Host ""
 Write-Host "Bundle output:" -ForegroundColor Green
 Get-ChildItem -Recurse $bundleRoot -Include *.msi, *.exe, *.dmg, *.deb, *.AppImage -ErrorAction SilentlyContinue |

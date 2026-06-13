@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SEC-001 (High)** — removed arbitrary `write_text_file` IPC; export uses Rust-side `save_transcript_txt_file` with native save dialog only.
 - **SEC-002 (High)** — SSRF hardening in `normalize_url` (blocks private/local IPs, blocked hostnames, embedded credentials) + unit tests in `wisper-core`.
 - **Long MP3 decode truncation** — symphonia can stop at ~50% on some VBR MP3s; Wisper now retries via ffmpeg when decoded duration is >10s shorter than container metadata (verified on 12-min and 59-min files).
-- **Release CI (partial)** — macOS `MACOSX_DEPLOYMENT_TARGET=10.15`; Jimver/cuda-toolkit bumped to v0.2.35 (CUDA 12.6.3 version lookup fixed).
+- **Release CI (partial)** — macOS `MACOSX_DEPLOYMENT_TARGET=10.15`; Jimver/cuda-toolkit bumped to v0.2.35; beta.4 fixes workspace bundle upload paths and Windows CUDA install (windows-2022, cache disabled, CUDA 12.6.0).
 - **Desktop smoke CI** — CPU smoke job now runs `npm run build` (TypeScript + Vite) after `cargo test`.
 
 ### Fixed (prior)
@@ -62,7 +62,7 @@ Target: **beta deployable** (installable build for trusted testers), then **Phas
 | Release pipeline (GitHub Releases) | Workflow exists; **no release published yet** |
 | First-run onboarding (model + yt-dlp) | Done — setup banner + model guard |
 | Week 2 UX (progressive disclosure) | PRD done — implementation pending |
-| Version sync (UI vs tags) | Pending — app still `0.2.0-beta.1`; tags at beta.3 |
+| Version sync (UI vs tags) | **0.2.0-beta.4** — aligned with next tag |
 
 **Tag `v0.2.0-beta.3`** ([run 27474963688](https://github.com/aislingld-pursuit/L2-Clone-Prodject/actions/runs/27474963688)) — **failed**
 
@@ -70,7 +70,7 @@ Target: **beta deployable** (installable build for trusted testers), then **Phas
 - Windows CUDA: **CUDA 12.6.3 installer failed** on runner (exit code `3772776473`).
 - Publish GitHub Release: skipped.
 
-**Next:** fix upload paths + Windows CUDA install → tag `v0.2.0-beta.4` → implement Week 2 guided first screen.
+**Next:** tag `v0.2.0-beta.4` → verify release publish → implement Week 2 guided first screen.
 
 See local [ROADMAP.md](./ROADMAP.md), [TODO.md](./TODO.md), [QA-CHECKLIST.md](./QA-CHECKLIST.md).
 

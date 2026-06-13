@@ -19,7 +19,7 @@ env:
 jobs:
   build-windows-cuda:
     name: Windows CUDA installer
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -31,9 +31,18 @@ jobs:
       - name: Install CUDA Toolkit
         uses: Jimver/cuda-toolkit@3d45d157f327c09c04b50ee6ccdea2d9d017ec76 # v0.2.35
         with:
-          cuda: "12.6.3"
+          cuda: "12.6.0"
           sub-packages: '["nvcc", "cudart", "cublas", "cublasLt"]'
           method: network
+          use-github-cache: false
+          use-local-cache: false
+      - name: Verify CUDA
+        shell: pwsh
+        run: |
+          if (-not $env:CUDA_PATH -or -not (Test-Path $env:CUDA_PATH)) {
+            throw "CUDA_PATH was not configured by cuda-toolkit."
+          }
+          nvcc --version
       - name: Install frontend dependencies
         run: npm ci
       - name: Build frontend
@@ -44,9 +53,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wisper-windows-cuda
-          path: |
-            wisper/src-tauri/target/release/bundle/**/*.msi
-            wisper/src-tauri/target/release/bundle/**/*.exe
+          path: wisper/target/release/bundle/**/*
+          if-no-files-found: error
 
   build-linux-vulkan:
     name: Linux Vulkan bundle
@@ -79,9 +87,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wisper-linux-vulkan
-          path: |
-            wisper/src-tauri/target/release/bundle/**/*.deb
-            wisper/src-tauri/target/release/bundle/**/*.AppImage
+          path: wisper/target/release/bundle/**/*
+          if-no-files-found: error
 
   build-macos:
     name: macOS bundle
@@ -104,9 +111,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wisper-macos
-          path: |
-            wisper/src-tauri/target/release/bundle/**/*.dmg
-            wisper/src-tauri/target/release/bundle/**/*.app
+          path: wisper/target/release/bundle/**/*
+          if-no-files-found: error
 
   github-release:
     name: Publish GitHub Release
