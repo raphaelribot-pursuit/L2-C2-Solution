@@ -53,24 +53,20 @@ Target: **beta deployable** (installable build for trusted testers), then **Phas
 | ---------------------------------------------------- | ---------------------------------------------------------------------------- |
 | Phase 1 exit QA (manual)                             | Automated preflight passed — manual checklist pending (`phase1-exit-qa.ps1`) |
 | Long MP3 decode (ffmpeg fallback)                    | Done — verified 12-min + 59-min MP3 on CUDA                                  |
-| Release CI (tag builds)                              | **Blocked** — see beta.3 notes below                                         |
+| Release CI (tag builds)                              | **Done** — `v0.2.0-beta.11` (Windows ~22m, Linux ~8m, macOS ~6m)             |
 | Desktop smoke (frontend build in CI)                 | Done — `npm run build` in CPU smoke job                                      |
 | Tier 1 bug fixes (mic, URL errors, orphan downloads) | Done                                                                         |
 | Security SEC-001 / SEC-002                           | Done — save dialog export + URL SSRF hardening                               |
 | Security SEC-003+ (CSP, capabilities)                | Pending — before wider beta                                                  |
 | Video import verify (MP4/MOV)                        | Automated symphonia test + manual drag-drop                                  |
 | Phase 2 minimum (export, search, delete)             | Done — TXT export, clipboard, FTS search, delete                             |
-| Release pipeline (GitHub Releases)                   | Workflow exists; **no release published yet**                                |
+| Release pipeline (GitHub Releases)                   | **Done** — [v0.2.0-beta.11](https://github.com/aislingld-pursuit/L2-Clone-Prodject/releases/tag/v0.2.0-beta.11) |
 | First-run onboarding (model + yt-dlp)                | Done — setup banner + model guard                                            |
 | Week 2 UX (progressive disclosure)                   | PRD done — implementation pending                                            |
-| Version sync (UI vs tags)                            | **0.2.0-beta.11** — aligned with next tag                                    |
+| Version sync (UI vs tags)                            | **0.2.0-beta.11** — published                                                |
 
 
-**Tag `v0.2.0-beta.9`** — CUDA install + gpu-cuda compile succeeded (~16m); MSI bundling failed (WiX requires numeric-only pre-release; `beta` invalid). macOS/Linux green.
-
-**Tag `v0.2.0-beta.10`** — all three platform builds green; publish failed uploading `artifacts/**/*` (duplicate `.so` names).
-
-**Next:** tag `v0.2.0-beta.11` — upload `.exe`/`.AppImage`/`.dmg` only; publish GitHub Release.
+**Tag `v0.2.0-beta.11`** — full three-platform build + GitHub Release (`.exe`, `.AppImage`, `.dmg`).
 
 See local [ROADMAP.md](./ROADMAP.md), [TODO.md](./TODO.md), [QA-CHECKLIST.md](./QA-CHECKLIST.md).
 
