@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::process::{Command, Stdio};
 
 use symphonia::core::audio::{AudioBufferRef, Signal};
 use symphonia::core::codecs::{DecoderOptions, CODEC_TYPE_NULL};
@@ -12,10 +13,173 @@ use crate::error::WisperError;
 
 pub(crate) const TARGET_SAMPLE_RATE: u32 = 16_000;
 
+#[derive(Debug, Clone)]
+pub struct LoadedAudio {
+    pub pcm: Vec<f32>,
+    pub decoded_duration_ms: u64,
+    /// From container metadata when available (may be absent on VBR MP3).
+    pub container_duration_ms: Option<u64>,
+}
+
+fn duration_ms_from_samples(sample_count: usize, sample_rate: u32) -> u64 {
+    (sample_count as u64 * 1000) / u64::from(sample_rate)
+}
+
+/// Symphonia can stop early on some MP3s (VBR, index gaps). Retry via ffmpeg when
+/// decoded PCM is much shorter than container metadata.
+const TRUNCATION_THRESHOLD_MS: u64 = 10_000;
+
+fn ffmpeg_available() -> bool {
+    Command::new("ffmpeg")
+        .args(["-version"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
+fn ffprobe_duration_ms(path: &Path) -> Option<u64> {
+    let path_str = path.to_str()?;
+    let output = Command::new("ffprobe")
+        .args([
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            path_str,
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let secs: f64 = String::from_utf8_lossy(&output.stdout).trim().parse().ok()?;
+    Some((secs * 1000.0) as u64)
+}
+
+fn decode_with_ffmpeg(path: &Path) -> Result<Vec<f32>, WisperError> {
+    let path_str = path
+        .to_str()
+        .ok_or_else(|| WisperError::AudioDecode("non-UTF-8 path".into()))?;
+
+    let output = Command::new("ffmpeg")
+        .args([
+            "-nostdin",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            path_str,
+            "-ac",
+            "1",
+            "-ar",
+            &TARGET_SAMPLE_RATE.to_string(),
+            "-f",
+            "f32le",
+            "-acodec",
+            "pcm_f32le",
+            "pipe:1",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| WisperError::AudioDecode(format!("ffmpeg not runnable: {e}")))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(WisperError::AudioDecode(format!(
+            "ffmpeg decode failed: {}",
+            stderr.trim()
+        )));
+    }
+
+    let bytes = output.stdout;
+    if bytes.len() < 4 {
+        return Err(WisperError::AudioDecode("ffmpeg returned no audio".into()));
+    }
+    if !bytes.len().is_multiple_of(4) {
+        return Err(WisperError::AudioDecode(
+            "ffmpeg returned malformed f32 PCM".into(),
+        ));
+    }
+
+    let pcm: Vec<f32> = bytes
+        .chunks_exact(4)
+        .map(|chunk| f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
+        .collect();
+
+    if pcm.is_empty() {
+        return Err(WisperError::AudioDecode("ffmpeg returned no audio".into()));
+    }
+
+    Ok(pcm)
+}
+
+fn looks_truncated(loaded: &LoadedAudio) -> bool {
+    loaded
+        .container_duration_ms
+        .is_some_and(|container_ms| container_ms > loaded.decoded_duration_ms + TRUNCATION_THRESHOLD_MS)
+}
+
+fn maybe_redecode_with_ffmpeg(path: &Path, loaded: LoadedAudio) -> Result<LoadedAudio, WisperError> {
+    if !looks_truncated(&loaded) {
+        return Ok(loaded);
+    }
+
+    if !ffmpeg_available() {
+        eprintln!(
+            "wisper: decode — symphonia truncated but ffmpeg not in PATH; \
+             install ffmpeg for full-length MP3 decode"
+        );
+        return Ok(loaded);
+    }
+
+    eprintln!(
+        "wisper: decode — symphonia got {:.1}s, retrying with ffmpeg",
+        loaded.decoded_duration_ms as f64 / 1000.0
+    );
+
+    let pcm = decode_with_ffmpeg(path)?;
+    let decoded_duration_ms = duration_ms_from_samples(pcm.len(), TARGET_SAMPLE_RATE);
+    let container_duration_ms = ffprobe_duration_ms(path).or(loaded.container_duration_ms);
+
+    eprintln!(
+        "wisper: decode — ffmpeg got {:.1}s ({} samples)",
+        decoded_duration_ms as f64 / 1000.0,
+        pcm.len()
+    );
+
+    Ok(LoadedAudio {
+        pcm,
+        decoded_duration_ms,
+        container_duration_ms,
+    })
+}
+
 /// Load any supported audio file and return mono f32 PCM at 16 kHz (Whisper input).
 pub fn load_audio_pcm(path: &Path) -> Result<Vec<f32>, WisperError> {
-    if path.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("wav")) {
-        return load_wav(path);
+    Ok(load_audio(path)?.pcm)
+}
+
+/// Load audio with decode duration and optional container duration for truncation checks.
+pub fn load_audio(path: &Path) -> Result<LoadedAudio, WisperError> {
+    if path
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("wav"))
+    {
+        let pcm = load_wav(path)?;
+        let decoded_duration_ms = duration_ms_from_samples(pcm.len(), TARGET_SAMPLE_RATE);
+        return Ok(LoadedAudio {
+            pcm,
+            decoded_duration_ms,
+            container_duration_ms: None,
+        });
     }
 
     decode_with_symphonia(path)
@@ -37,7 +201,7 @@ fn load_wav(path: &Path) -> Result<Vec<f32>, WisperError> {
     Ok(resample_linear(&mono, spec.sample_rate, TARGET_SAMPLE_RATE))
 }
 
-fn decode_with_symphonia(path: &Path) -> Result<Vec<f32>, WisperError> {
+fn decode_with_symphonia(path: &Path) -> Result<LoadedAudio, WisperError> {
     let src = std::fs::File::open(path).map_err(|_| WisperError::AudioNotFound(path.display().to_string()))?;
     let mss = MediaSourceStream::new(Box::new(src), Default::default());
 
@@ -67,6 +231,12 @@ fn decode_with_symphonia(path: &Path) -> Result<Vec<f32>, WisperError> {
         .sample_rate
         .unwrap_or(TARGET_SAMPLE_RATE);
     let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(1);
+    let container_duration_ms = track.codec_params.n_frames.and_then(|n_frames| {
+        track
+            .codec_params
+            .sample_rate
+            .map(|sr| duration_ms_from_samples(n_frames as usize, sr))
+    });
 
     let mut decoder = symphonia::default::get_codecs()
         .make(&track.codec_params, &DecoderOptions::default())
@@ -78,10 +248,15 @@ fn decode_with_symphonia(path: &Path) -> Result<Vec<f32>, WisperError> {
         let packet = match format.next_packet() {
             Ok(packet) => packet,
             Err(SymphoniaError::ResetRequired) => continue,
-            Err(SymphoniaError::IoError(_)) if pcm.is_empty() => {
-                return Err(WisperError::AudioDecode("empty audio file".into()));
+            Err(SymphoniaError::IoError(err)) => {
+                if pcm.is_empty() {
+                    return Err(WisperError::AudioDecode("empty audio file".into()));
+                }
+                if err.kind() == std::io::ErrorKind::UnexpectedEof {
+                    break;
+                }
+                return Err(WisperError::AudioDecode(err.to_string()));
             }
-            Err(SymphoniaError::IoError(_)) => break,
             Err(e) => return Err(WisperError::AudioDecode(e.to_string())),
         };
 
@@ -92,7 +267,11 @@ fn decode_with_symphonia(path: &Path) -> Result<Vec<f32>, WisperError> {
         if codec != CODEC_TYPE_NULL {
             match decoder.decode(&packet) {
                 Ok(decoded) => append_decoded(&mut pcm, decoded),
-                Err(SymphoniaError::IoError(_)) => break,
+                Err(SymphoniaError::IoError(err))
+                    if err.kind() == std::io::ErrorKind::UnexpectedEof =>
+                {
+                    break;
+                }
                 Err(SymphoniaError::DecodeError(_)) => continue,
                 Err(e) => return Err(WisperError::AudioDecode(e.to_string())),
             }
@@ -104,7 +283,14 @@ fn decode_with_symphonia(path: &Path) -> Result<Vec<f32>, WisperError> {
     }
 
     let mono = downmix_to_mono(&pcm, channels);
-    Ok(resample_linear(&mono, sample_rate, TARGET_SAMPLE_RATE))
+    let resampled = resample_linear(&mono, sample_rate, TARGET_SAMPLE_RATE);
+    let decoded_duration_ms = duration_ms_from_samples(resampled.len(), TARGET_SAMPLE_RATE);
+    let loaded = LoadedAudio {
+        pcm: resampled,
+        decoded_duration_ms,
+        container_duration_ms,
+    };
+    maybe_redecode_with_ffmpeg(path, loaded)
 }
 
 fn append_decoded(pcm: &mut Vec<f32>, decoded: AudioBufferRef<'_>) {

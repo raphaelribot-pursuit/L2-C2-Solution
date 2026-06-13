@@ -84,6 +84,173 @@ fn pcm_duration_ms(pcm: &[f32]) -> u64 {
     (pcm.len() as u64 * 1000) / 16_000
 }
 
+fn ms_to_timestamp(ms: i64) -> String {
+    let total_sec = ms.max(0) / 1000;
+    format!("{}:{:02}", total_sec / 60, total_sec % 60)
+}
+
+/// Log decoded vs container duration so truncation is visible before inference.
+fn log_audio_decode_diagnostics(path: &Path, loaded: &audio::LoadedAudio) {
+    eprintln!(
+        "wisper: decode — file={} decoded={} ({:.1}s, {} samples)",
+        path.display(),
+        ms_to_timestamp(loaded.decoded_duration_ms as i64),
+        loaded.decoded_duration_ms as f64 / 1000.0,
+        loaded.pcm.len(),
+    );
+    if let Some(container_ms) = loaded.container_duration_ms {
+        eprintln!(
+            "wisper: decode — container metadata={} ({:.1}s)",
+            ms_to_timestamp(container_ms as i64),
+            container_ms as f64 / 1000.0,
+        );
+        let missing_ms = container_ms as i64 - loaded.decoded_duration_ms as i64;
+        if missing_ms > 10_000 {
+            eprintln!(
+                "wisper: warning — decoded audio is {:.1}s SHORTER than container metadata. \
+                 Wisper will only transcribe the decoded portion.",
+                missing_ms as f64 / 1000.0
+            );
+        }
+    }
+}
+
+/// Per-chunk inference stats (logged before merge so empty chunks vs merge drops are distinguishable).
+fn log_chunk_diagnostics(
+    chunk_index: usize,
+    chunk_count: usize,
+    offset_ms: i32,
+    duration_ms: i32,
+    segments: &[TranscriptSegment],
+) {
+    if segments.is_empty() {
+        eprintln!(
+            "wisper: chunk {}/{} offset={}ms dur={}ms — NO SEGMENTS (whisper returned nothing)",
+            chunk_index + 1,
+            chunk_count,
+            offset_ms,
+            duration_ms,
+        );
+        return;
+    }
+
+    let min_start = segments.iter().map(|s| s.start_ms).min().unwrap_or(0);
+    let max_end = segments.iter().map(|s| s.end_ms).max().unwrap_or(0);
+    eprintln!(
+        "wisper: chunk {}/{} offset={}ms dur={}ms — {} segments, timestamps {}..{} (window {}..{})",
+        chunk_index + 1,
+        chunk_count,
+        offset_ms,
+        duration_ms,
+        segments.len(),
+        ms_to_timestamp(min_start),
+        ms_to_timestamp(max_end),
+        ms_to_timestamp(i64::from(offset_ms)),
+        ms_to_timestamp(i64::from(offset_ms) + i64::from(duration_ms)),
+    );
+}
+
+fn log_merge_diagnostics(
+    chunk_index: usize,
+    before_count: usize,
+    merged_len_before: usize,
+    merged_len_after: usize,
+) {
+    let added = merged_len_after.saturating_sub(merged_len_before);
+    if chunk_index > 0 && before_count > 0 && added == 0 {
+        eprintln!(
+            "wisper: warning — chunk {} produced {} segments but merge added 0 \
+             (overlap filter may have dropped them all)",
+            chunk_index + 1,
+            before_count,
+        );
+    } else if chunk_index > 0 {
+        eprintln!(
+            "wisper: chunk {} merge — kept {}/{} segments",
+            chunk_index + 1,
+            added,
+            before_count,
+        );
+    }
+}
+
+fn log_transcription_summary(
+    duration_ms: u64,
+    chunk_count: usize,
+    segments: &[TranscriptSegment],
+) {
+    eprintln!(
+        "wisper: transcribe — {} chunk(s), audio {:.1}s",
+        chunk_count,
+        duration_ms as f64 / 1000.0,
+    );
+    if segments.is_empty() {
+        eprintln!("wisper: transcribe — finished with NO segments");
+        return;
+    }
+    let last_end = segments.iter().map(|s| s.end_ms).max().unwrap_or(0);
+    eprintln!(
+        "wisper: transcribe — {} segments total, last timestamp {}",
+        segments.len(),
+        ms_to_timestamp(last_end),
+    );
+    let expected_ms = duration_ms as i64;
+    if last_end + 60_000 < expected_ms {
+        eprintln!(
+            "wisper: warning — transcript ends at {} ({:.1}s) but audio is ~{:.1}s",
+            ms_to_timestamp(last_end),
+            last_end as f64 / 1000.0,
+            expected_ms as f64 / 1000.0,
+        );
+    }
+}
+
+/// whisper.cpp can loop on one long `full()` pass (~15–20+ min). Split into windows instead.
+/// See: https://github.com/ggml-org/whisper.cpp/issues/2606
+const CHUNK_DURATION_MS: i64 = 180_000;
+const CHUNK_OVERLAP_MS: i64 = 2_000;
+const CHUNK_THRESHOLD_MS: u64 = CHUNK_DURATION_MS as u64;
+
+/// One transcribe window over the full PCM buffer (offset + duration in ms).
+struct TranscribeWindow {
+    offset_ms: i32,
+    duration_ms: i32,
+}
+
+fn transcribe_windows(pcm: &[f32]) -> Vec<TranscribeWindow> {
+    chunk_windows(pcm_duration_ms(pcm))
+        .into_iter()
+        .map(|(offset_ms, duration_ms)| TranscribeWindow {
+            offset_ms,
+            duration_ms,
+        })
+        .collect()
+}
+/// `(offset_ms, duration_ms)` windows covering `[0, total_ms)`.
+fn chunk_windows(total_ms: u64) -> Vec<(i32, i32)> {
+    if total_ms <= CHUNK_THRESHOLD_MS {
+        return vec![(0, total_ms as i32)];
+    }
+
+    let total = total_ms as i32;
+    let chunk = CHUNK_DURATION_MS as i32;
+    let overlap = CHUNK_OVERLAP_MS as i32;
+    let step = chunk - overlap;
+    let mut windows = Vec::new();
+    let mut offset = 0i32;
+
+    while offset < total {
+        let dur = (total - offset).min(chunk);
+        windows.push((offset, dur));
+        if offset + dur >= total {
+            break;
+        }
+        offset += step;
+    }
+
+    windows
+}
+
 type ProgressCallback = Arc<Mutex<Box<dyn FnMut(TranscriptionProgress) + Send>>>;
 
 fn collect_segments(state: &whisper_rs::WhisperState) -> Result<Vec<TranscriptSegment>, WisperError> {
@@ -106,6 +273,7 @@ fn collect_segments(state: &whisper_rs::WhisperState) -> Result<Vec<TranscriptSe
         }
 
         segments.push(TranscriptSegment {
+            // whisper.cpp applies offset_ms to segment t0/t1 when using the full PCM buffer.
             start_ms: segment.start_timestamp() * 10,
             end_ms: segment.end_timestamp() * 10,
             text,
@@ -113,6 +281,92 @@ fn collect_segments(state: &whisper_rs::WhisperState) -> Result<Vec<TranscriptSe
     }
 
     Ok(segments)
+}
+
+fn merge_chunk_segments(
+    merged: &mut Vec<TranscriptSegment>,
+    chunk_index: usize,
+    chunk_offset_ms: i32,
+    _chunk_duration_ms: i32,
+    is_last_chunk: bool,
+    mut chunk_segments: Vec<TranscriptSegment>,
+) {
+    if chunk_index > 0 {
+        let overlap_cutoff = i64::from(chunk_offset_ms) + CHUNK_OVERLAP_MS;
+        let retained: Vec<_> = chunk_segments
+            .iter()
+            .filter(|s| s.start_ms >= overlap_cutoff)
+            .cloned()
+            .collect();
+        if !retained.is_empty() {
+            chunk_segments = retained;
+        } else if is_last_chunk {
+            // Last sliver can fall entirely inside overlap — keep it rather than drop all.
+        } else {
+            chunk_segments.retain(|s| s.start_ms >= overlap_cutoff);
+        }
+    }
+
+    for seg in chunk_segments {
+        if merged
+            .last()
+            .is_some_and(|prev| prev.text == seg.text)
+        {
+            continue;
+        }
+        merged.push(seg);
+    }
+}
+
+fn apply_chunk_window(
+    params: &mut FullParams<'_, '_>,
+    offset_ms: i32,
+    duration_ms: i32,
+    chunked: bool,
+) {
+    params.set_offset_ms(offset_ms);
+    params.set_duration_ms(duration_ms);
+    if chunked {
+        // Avoid cross-chunk prompt conditioning that reinforces repetition loops.
+        params.set_no_context(true);
+        params.set_n_max_text_ctx(0);
+    }
+}
+
+fn attach_progress(
+    params: &mut FullParams<'_, '_>,
+    on_progress: &ProgressCallback,
+    started: Instant,
+    duration_ms: u64,
+    chunk_index: usize,
+    chunk_count: usize,
+) {
+    let progress_cb = Arc::clone(on_progress);
+    params.set_progress_callback_safe(move |percent| {
+        if let Ok(mut cb) = progress_cb.lock() {
+            let overall = if chunk_count <= 1 {
+                percent
+            } else {
+                ((chunk_index as i32 * 100) + percent) / chunk_count as i32
+            };
+            cb(TranscriptionProgress {
+                percent: overall,
+                elapsed_ms: started.elapsed().as_millis() as u64,
+                duration_ms,
+            });
+        }
+    });
+}
+
+fn attach_abort(params: &mut FullParams<'_, '_>, cancel: &Arc<AtomicBool>) -> AbortGuard {
+    let cancel_for_abort = Arc::clone(cancel);
+    let cancel_ptr = Arc::into_raw(cancel_for_abort) as *mut c_void;
+    let guard = AbortGuard(cancel_ptr as *const AtomicBool);
+    unsafe {
+        params.set_abort_callback(Some(abort_trampoline));
+        params.set_abort_callback_user_data(cancel_ptr);
+    }
+    guard
 }
 
 /// Transcribe mono PCM already loaded at 16 kHz.
@@ -125,54 +379,80 @@ pub fn transcribe_pcm(
 ) -> Result<Vec<TranscriptSegment>, WisperError> {
     let duration_ms = pcm_duration_ms(pcm);
     let started = Instant::now();
-
-    let mut state = ctx
-        .create_state()
-        .map_err(|e| WisperError::Transcription(e.to_string()))?;
-
-    let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
-    params.set_translate(false);
-    if let Some(lang) = options.language.as_deref() {
-        params.set_language(Some(lang));
-    }
+    let windows = transcribe_windows(pcm);
+    let chunked = windows.len() > 1;
+    let mut merged = Vec::new();
     let verbose = options.verbose_logging;
-    params.set_print_special(verbose);
-    params.set_print_progress(verbose);
-    params.set_print_realtime(verbose);
-    params.set_print_timestamps(verbose);
-    params.set_debug_mode(false);
-    params.set_token_timestamps(true);
 
-    let progress_cb = Arc::clone(&on_progress);
-    params.set_progress_callback_safe(move |percent| {
-        if let Ok(mut cb) = progress_cb.lock() {
-            cb(TranscriptionProgress {
-                percent,
-                elapsed_ms: started.elapsed().as_millis() as u64,
-                duration_ms,
-            });
+    eprintln!(
+        "wisper: transcribe — starting {} window(s) over {:.1}s PCM",
+        windows.len(),
+        duration_ms as f64 / 1000.0,
+    );
+
+    for (chunk_index, window) in windows.iter().enumerate() {
+        if cancel.load(Ordering::Relaxed) {
+            return Err(WisperError::Cancelled);
         }
-    });
 
-    // whisper-rs `set_abort_callback_safe` uses the wrong trampoline type (`F` instead of
-    // `Box<dyn FnMut() -> bool>`), which can corrupt memory during GPU inference.
-    let cancel_for_abort = Arc::clone(&cancel);
-    let cancel_ptr = Arc::into_raw(cancel_for_abort) as *mut c_void;
-    let _abort_guard = AbortGuard(cancel_ptr as *const AtomicBool);
-    unsafe {
-        params.set_abort_callback(Some(abort_trampoline));
-        params.set_abort_callback_user_data(cancel_ptr);
+        let mut state = ctx
+            .create_state()
+            .map_err(|e| WisperError::Transcription(e.to_string()))?;
+
+        let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+        params.set_translate(false);
+        if let Some(lang) = options.language.as_deref() {
+            params.set_language(Some(lang));
+        }
+        params.set_debug_mode(false);
+        params.set_token_timestamps(true);
+        apply_chunk_window(&mut params, window.offset_ms, window.duration_ms, chunked);
+        params.set_print_special(verbose);
+        params.set_print_progress(verbose);
+        params.set_print_realtime(verbose);
+        params.set_print_timestamps(verbose);
+        attach_progress(
+            &mut params,
+            &on_progress,
+            started,
+            duration_ms,
+            chunk_index,
+            windows.len(),
+        );
+        let _abort_guard = attach_abort(&mut params, &cancel);
+
+        state
+            .full(params, pcm)
+            .map_err(|e| WisperError::Transcription(e.to_string()))?;
+
+        if cancel.load(Ordering::Relaxed) {
+            return Err(WisperError::Cancelled);
+        }
+
+        let chunk_segments = collect_segments(&state)?;
+        log_chunk_diagnostics(
+            chunk_index,
+            windows.len(),
+            window.offset_ms,
+            window.duration_ms,
+            &chunk_segments,
+        );
+        let merged_len_before = merged.len();
+        let before_count = chunk_segments.len();
+        merge_chunk_segments(
+            &mut merged,
+            chunk_index,
+            window.offset_ms,
+            window.duration_ms,
+            chunk_index + 1 == windows.len(),
+            chunk_segments,
+        );
+        log_merge_diagnostics(chunk_index, before_count, merged_len_before, merged.len());
     }
 
-    state
-        .full(params, pcm)
-        .map_err(|e| WisperError::Transcription(e.to_string()))?;
+    log_transcription_summary(duration_ms, windows.len(), &merged);
 
-    if cancel.load(Ordering::Relaxed) {
-        return Err(WisperError::Cancelled);
-    }
-
-    collect_segments(&state)
+    Ok(merged)
 }
 
 fn gpu_backend_label() -> String {
@@ -200,7 +480,9 @@ pub fn transcribe_with_engine(
         ));
     }
 
-    let pcm = audio::load_audio_pcm(audio_path)?;
+    let loaded = audio::load_audio(audio_path)?;
+    log_audio_decode_diagnostics(audio_path, &loaded);
+    let pcm = loaded.pcm;
     let progress: ProgressCallback = Arc::new(Mutex::new(Box::new(on_progress)));
 
     let run = |engine: &mut WhisperEngine, backend: ComputeBackend| {
@@ -268,4 +550,102 @@ pub fn transcribe_file(
         None,
     )
     .map(|r| r.segments)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn short_audio_uses_single_window() {
+        assert_eq!(chunk_windows(60_000), vec![(0, 60_000)]);
+        assert_eq!(chunk_windows(CHUNK_THRESHOLD_MS), vec![(0, CHUNK_THRESHOLD_MS as i32)]);
+    }
+
+    #[test]
+    fn thirty_minute_audio_is_split_with_overlap() {
+        let total_ms = 30 * 60 * 1000;
+        let windows = chunk_windows(total_ms);
+        assert!(windows.len() > 1);
+        assert_eq!(windows.first().copied(), Some((0, CHUNK_DURATION_MS as i32)));
+        assert_eq!(
+            windows.last().map(|(o, d)| i64::from(*o) + i64::from(*d)),
+            Some(total_ms as i64)
+        );
+
+        for w in windows.windows(2) {
+            let (prev_off, prev_dur) = w[0];
+            let (next_off, _) = w[1];
+            assert_eq!(
+                i64::from(next_off),
+                i64::from(prev_off) + i64::from(prev_dur) - CHUNK_OVERLAP_MS
+            );
+        }
+    }
+
+    #[test]
+    fn transcribe_windows_cover_thirty_minutes() {
+        let total_ms = 30 * 60 * 1000;
+        let pcm = vec![0.0_f32; (total_ms as usize * 16_000) / 1000];
+        let windows = transcribe_windows(&pcm);
+
+        assert!(windows.len() > 1);
+        assert_eq!(windows[0].offset_ms, 0);
+        assert_eq!(windows[0].duration_ms, CHUNK_DURATION_MS as i32);
+
+        let last = windows.last().unwrap();
+        assert_eq!(
+            i64::from(last.offset_ms) + i64::from(last.duration_ms),
+            total_ms as i64
+        );
+    }
+
+    #[test]
+    fn twelve_minute_audio_is_split_with_overlap() {
+        let total_ms = 12 * 60 * 1000;
+        let windows = chunk_windows(total_ms);
+        assert!(windows.len() > 1);
+        assert_eq!(
+            windows.last().map(|(o, d)| i64::from(*o) + i64::from(*d)),
+            Some(total_ms as i64)
+        );
+    }
+
+    #[test]
+    fn merge_skips_overlap_and_duplicate_text() {
+        let mut merged = vec![TranscriptSegment {
+            start_ms: 170_000,
+            end_ms: 172_000,
+            text: "end of chunk one".into(),
+        }];
+
+        merge_chunk_segments(
+            &mut merged,
+            1,
+            178_000,
+            180_000,
+            false,
+            vec![
+                TranscriptSegment {
+                    start_ms: 178_500,
+                    end_ms: 179_000,
+                    text: "inside overlap".into(),
+                },
+                TranscriptSegment {
+                    start_ms: 180_000,
+                    end_ms: 181_000,
+                    text: "end of chunk one".into(),
+                },
+                TranscriptSegment {
+                    start_ms: 181_000,
+                    end_ms: 182_000,
+                    text: "new content".into(),
+                },
+            ],
+        );
+
+        assert_eq!(merged.len(), 2);
+        assert_eq!(merged[0].text, "end of chunk one");
+        assert_eq!(merged[1].text, "new content");
+    }
 }
