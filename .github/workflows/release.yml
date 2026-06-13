@@ -13,6 +13,8 @@ defaults:
 
 env:
   CARGO_TERM_COLOR: always
+  MACOSX_DEPLOYMENT_TARGET: "10.15"
+  CMAKE_OSX_DEPLOYMENT_TARGET: "10.15"
 
 jobs:
   build-windows-cuda:
@@ -20,12 +22,18 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: wisper/package-lock.json
       - uses: dtolnay/rust-toolchain@stable
+      - name: Install CUDA Toolkit
+        uses: Jimver/cuda-toolkit@d34c721df9930a1f5375dbe0f6e52af57c7f56e1 # v0.2.15
+        with:
+          cuda: "12.6.3"
+          sub-packages: '["nvcc", "cudart", "cublas", "cublasLt"]'
+          method: network
       - name: Install frontend dependencies
         run: npm ci
       - name: Build frontend
@@ -45,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -80,7 +88,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -122,5 +130,6 @@ jobs:
             1. Pick the installer for your platform (NVIDIA → Windows CUDA, AMD/Intel → Linux Vulkan, Mac → macOS).
             2. Download a Whisper GGML model after install — models are not bundled. See `wisper/scripts/download-model.ps1` in the repo.
             3. For YouTube/URL import, install [yt-dlp](https://github.com/yt-dlp/yt-dlp) separately.
+            4. For full-length MP3 import, install [ffmpeg](https://ffmpeg.org/) (symphonia can truncate some VBR MP3s; Wisper falls back to ffmpeg when installed).
 
-            See [GPU_BACKENDS.md](https://github.com/${{ github.repository }}/blob/master/GPU_BACKENDS.md) for which artifact matches your GPU.
+            See the repo README — **Which build should I use?** — for which artifact matches your GPU.

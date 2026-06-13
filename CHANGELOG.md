@@ -13,15 +13,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`wisper/scripts/download-model.ps1`** — download GGML models into app data (tiny / base / large-turbo).
 - **Download guide** — README and [GPU_BACKENDS.md](./GPU_BACKENDS.md) “Which installer?” table (NVIDIA → CUDA, AMD/Intel → Vulkan, Mac → Metal, fallback → CPU).
 - **Phase 1 UI polish** — two-step progress (Download → Transcribe) and library labels.
+- **`wisper/scripts/smoke-test.ps1`** / **`smoke-test.sh`** — local CI-parity smoke (cargo test, cargo check, npm build).
+- **Truncation unit test** — `looks_truncated` threshold logic in `wisper-core`.
 
 ### Changed
 
+- **Docs in git** — only `README.md` and `CHANGELOG.md` are committed; `TECHNICAL_ARCHITECTURE.md`, `ROADMAP.md`, `GPU_BACKENDS.md`, and office docs stay local (`.gitignore`).
 - **Intel SYCL demoted to advanced-only** — removed from `dev.ps1` auto-detect; use `dev-sycl.ps1` explicitly. Intel iGPU users should use Vulkan builds.
 - PRD `.docx` files stay local (`.gitignore`); README no longer links committed PRD paths.
 
 ### Fixed
 
-- **CodeRabbit review (Phase 1)** — platform-aware yt-dlp binary names in Tauri; CUDA registry version sort in `dev.ps1`; drag-drop listener cleanup on unmount; transcript duration from max segment `end_ms`; SYCL release artifact labels in About.
+- **Long MP3 decode truncation** — symphonia can stop at ~50% on some VBR MP3s; Wisper now retries via ffmpeg when decoded duration is >10s shorter than container metadata (verified on 12-min and 59-min files).
+- **Release CI** — macOS bundle sets `MACOSX_DEPLOYMENT_TARGET=10.15`; Windows CUDA release installs CUDA Toolkit on the runner.
+- **Desktop smoke CI** — CPU smoke job now runs `npm run build` (TypeScript + Vite) after `cargo test`.
+
+### Fixed (prior)
+
+- Platform-aware yt-dlp binary names in Tauri; CUDA registry version sort in `dev.ps1`; drag-drop listener cleanup on unmount; transcript duration from max segment `end_ms`; SYCL release artifact labels in About.
 - **Tier 1 ship blockers** — mic cpal stream errors surfaced at start/stop instead of silent empty recordings; URL import errors tagged `download` vs `transcribe` in UI status; partial yt-dlp downloads cleaned up on cancel/failure.
 - **Phase 2 library** — FTS5 transcript search, delete recording (DB + audio file under app data), export transcript as TXT, copy to clipboard.
 - **First-run onboarding** — setup banner when Whisper model or yt-dlp is missing; `get_model_status` blocks transcription until a model is installed.
@@ -37,6 +46,9 @@ Target: **beta deployable** (installable build for trusted testers), then **Phas
 | Track | Status |
 |-------|--------|
 | Phase 1 exit QA (manual) | Automated preflight passed — run manual checklist in app when convenient |
+| Long MP3 decode (ffmpeg fallback) | Done — verified 12-min + 59-min MP3 on CUDA |
+| Release CI (tag builds) | Fixed macOS deployment target + Windows CUDA toolkit install |
+| Desktop smoke (frontend build in CI) | Done — `npm run build` in CPU smoke job |
 | Tier 1 bug fixes (mic, URL errors, orphan downloads) | Done |
 | Video import verify (MP4/MOV) | Automated symphonia test + manual drag-drop |
 | Phase 2 minimum (export, search, delete) | Done — TXT export, clipboard, FTS search, delete |

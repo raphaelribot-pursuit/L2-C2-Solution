@@ -9,12 +9,9 @@ Privacy-first, local-only clone of **Whisper Notes** — record, import files, o
 
 | File | Description |
 |------|-------------|
-| [TECHNICAL_ARCHITECTURE.md](./TECHNICAL_ARCHITECTURE.md) | Local-first stack (Tauri, whisper.cpp, yt-dlp, SQLite) |
-| [ROADMAP.md](./ROADMAP.md) | Phased delivery plan with AI-agent time estimates |
-| [GPU_BACKENDS.md](./GPU_BACKENDS.md) | **GPU build matrix, features, dev scripts, CI plan** |
-| [CHANGELOG.md](./CHANGELOG.md) | Release and unreleased change history |
+| [CHANGELOG.md](./CHANGELOG.md) | Release and unreleased change history (committed) |
 
-Product requirements (PRD) live in local `.docx` files on each developer machine — not committed to git.
+Other project docs (`TECHNICAL_ARCHITECTURE.md`, `ROADMAP.md`, `GPU_BACKENDS.md`, PRD `.docx`) stay on each developer machine — not committed to git.
 
 ## Regenerate PRD
 
@@ -33,11 +30,11 @@ Requires `Aisling Copy of 20260515 PRD Template.docx` in this folder (close in W
 
 ## Status
 
-**Phase 0.5 complete · Phase 1 in progress** — mic, file/URL import, drag-and-drop, language select, CUDA verified (RTX 5080). See [ROADMAP.md](./ROADMAP.md).
+**Phase 0.5 complete · Phase 1 in progress** — mic, file/URL import, drag-and-drop, language select, CUDA verified (RTX 5080). Phase plan lives in local `ROADMAP.md`.
 
 ## Which build should I use?
 
-Each installer links **one** GPU backend (or CPU-only). Pick by hardware — see [GPU_BACKENDS.md](./GPU_BACKENDS.md) for details.
+Each installer links **one** GPU backend (or CPU-only). Pick by hardware:
 
 | Your hardware | Download / build | About screen shows |
 |---------------|------------------|-------------------|
@@ -58,6 +55,10 @@ Each installer links **one** GPU backend (or CPU-only). Pick by hardware — see
 - [Node.js](https://nodejs.org/) 20+
 - **CMake** (required to build whisper.cpp)
 - Visual Studio Build Tools (MSVC) on Windows — required for GPU builds
+- **ffmpeg** (recommended) — full-length MP3 import when symphonia truncates early:
+  - Windows: `winget install ffmpeg`
+  - macOS: `brew install ffmpeg`
+  - Linux: `sudo apt install ffmpeg` (Debian/Ubuntu) or your distro package manager
 - **GPU (optional):** [Vulkan SDK](https://vulkan.lunarg.com/) and/or [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) on Windows/Linux; Xcode on macOS for Metal
 
 ### Run the app
@@ -84,10 +85,24 @@ cd wisper && npm install && chmod +x dev-macos.sh && ./dev-macos.sh
 cd wisper && npm install && chmod +x dev-linux.sh && ./dev-linux.sh
 ```
 
-Full GPU details: [GPU_BACKENDS.md](./GPU_BACKENDS.md).
+Full GPU script details: local `GPU_BACKENDS.md` or the table above.
 
 ### Whisper model (one-time)
 
 Download a GGML model (e.g. `ggml-large-v3-turbo.bin` or `ggml-base.en.bin` for faster testing) from [Hugging Face — whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp) and place it at the path shown in the app under **Whisper model** (typically `%APPDATA%\com.aislingldpursuit.wisper\models\` on Windows).
 
 Transcription is fully offline once the model is installed.
+
+### Smoke test (before PR)
+
+```powershell
+cd wisper
+.\scripts\smoke-test.ps1
+```
+
+Linux/macOS:
+
+```bash
+cd wisper
+chmod +x scripts/smoke-test.sh && ./scripts/smoke-test.sh
+```

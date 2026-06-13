@@ -853,8 +853,7 @@ function App() {
             )}
             <p className="hint about-footnote">
               Each installer links one GPU stack (Vulkan, CUDA, or Metal). Use the
-              artifact that matches your GPU — see{" "}
-              <code>GPU_BACKENDS.md</code> in the repo.
+              artifact that matches your GPU — see the repo README.
             </p>
           </div>
         </div>

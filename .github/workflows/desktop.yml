@@ -34,10 +34,19 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: wisper/package-lock.json
       - name: Test wisper-core (CPU)
         run: cargo test -p wisper-core
       - name: Check wisper app (CPU)
         run: cargo check -p wisper
+      - name: Frontend smoke (typecheck + vite build)
+        run: |
+          npm ci
+          npm run build
 
   build-linux-vulkan:
     name: Linux Vulkan (x86_64)

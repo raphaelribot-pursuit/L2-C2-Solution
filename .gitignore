@@ -12,6 +12,17 @@ _prd_working_copy.docx
 Jimmy and Aisling*.docx
 Wisper Clone PRD*.docx
 
+# Documentation — only README.md and CHANGELOG.md are committed
+*.md
+!README.md
+!**/README.md
+!CHANGELOG.md
+
+# Local office / pitch docs
+*.docx
+*.pptx
+*.pdf
+
 # Wisper app (Tauri + Rust)
 wisper/node_modules/
 wisper/dist/

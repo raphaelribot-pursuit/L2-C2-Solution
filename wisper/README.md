@@ -29,7 +29,7 @@ chmod +x dev-linux.sh && ./dev-linux.sh
 
 ## GPU builds
 
-Cross-desktop: Windows, macOS, and Linux share the same Cargo features. See [../GPU_BACKENDS.md](../GPU_BACKENDS.md).
+Cross-desktop: Windows, macOS, and Linux share the same Cargo features. See the repo root README — **Which build should I use?**
 
 | Script | Platform | Backend |
 |--------|----------|---------|
