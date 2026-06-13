@@ -1,6 +1,6 @@
 [package]
 name = "wisper-core"
-version = "0.2.0-beta.7"
+version = "0.2.0-beta.8"
 edition = "2021"
 description = "Local-first audio pipeline and whisper.cpp transcription for Wisper"
 

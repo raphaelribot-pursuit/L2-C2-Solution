@@ -15,11 +15,12 @@ $installer = Join-Path $env:RUNNER_TEMP "cuda_${Version}_windows_network.exe"
 Write-Host "Downloading CUDA $Version network installer..."
 Invoke-WebRequest -Uri $url -OutFile $installer -UseBasicParsing
 
-# Minimal sub-packages only — skip VS integration / Nsight (hangs on GHA windows-2022).
 $packages = @(
     "nvcc_$Short",
     "cudart_$Short",
-    "cublas_$Short"
+    "cudart_dev_$Short",
+    "cublas_$Short",
+    "cublas_dev_$Short"
 ) -join " "
 
 Write-Host "Installing CUDA sub-packages: $packages"
