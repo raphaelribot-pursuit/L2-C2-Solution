@@ -37,11 +37,11 @@ Requires template `.docx` files in Downloads or project root (close in Word if c
 
 ## Status
 
-**Phase 1 feature-complete · beta deploy blocked on release CI**
+**Phase 1 feature-complete · beta published**
 
 - Core flows shipped: mic, file/URL import, drag-and-drop, library, export, GPU fallback.
 - SEC-001/002 fixed (save-dialog export, URL SSRF hardening).
-- **Release CI:** tag `v0.2.0-beta.3` failed — Windows CUDA install + macOS/Linux artifact upload paths. No GitHub Release published yet.
+- **Release:** [v0.2.0-beta.11](https://github.com/aislingld-pursuit/L2-Clone-Prodject/releases/tag/v0.2.0-beta.11) — Windows CUDA, Linux Vulkan, macOS (Apple Silicon only until beta.12 universal DMG).
 - **Week 2 (next):** guided first screen / progressive disclosure — PRD complete, implementation pending.
 
 Phase plan and QA-ordered tasks: local `ROADMAP.md`, `TODO.md`, `QA-CHECKLIST.md`.
@@ -54,7 +54,7 @@ Each installer links **one** GPU backend (or CPU-only). Pick by hardware:
 |---------------|------------------|-------------------|
 | **NVIDIA GPU** (GeForce / RTX) | `wisper-windows-cuda` or `.\dev-cuda.ps1` | CUDA |
 | **AMD or Intel GPU** on Windows/Linux | `wisper-*-vulkan` or `.\dev.ps1 -GpuBackend vulkan` | Vulkan |
-| **Apple Mac** (M-series or Intel) | `wisper-macos-universal` or `./dev-macos.sh` | Metal |
+| **Apple Mac** (M-series or Intel) | Universal macOS `.dmg` from GitHub Releases (beta.12+) or `./dev-macos.sh` | Metal |
 | **No GPU / old PC / CI smoke** | `wisper-*-cpu` or `.\dev.ps1 -GpuBackend cpu` | CPU-only |
 
 **Intel iGPU on Windows/Linux:** use the **Vulkan** build — not SYCL. SYCL remains an advanced developer-only path (`dev-sycl.ps1`).

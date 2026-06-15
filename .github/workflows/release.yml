@@ -102,7 +102,7 @@ jobs:
           if-no-files-found: error
 
   build-macos:
-    name: macOS bundle
+    name: macOS bundle (universal)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -112,17 +112,19 @@ jobs:
           cache: npm
           cache-dependency-path: wisper/package-lock.json
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
       - name: Install frontend dependencies
         run: npm ci
       - name: Build frontend
         run: npm run build
-      - name: Build Tauri bundle (Metal default)
-        run: npm run tauri -- build
+      - name: Build Tauri bundle (Metal, universal Intel + Apple Silicon)
+        run: npm run tauri -- build -- --target universal-apple-darwin
       - name: Upload macOS bundle
         uses: actions/upload-artifact@v4
         with:
           name: wisper-macos
-          path: wisper/target/release/bundle/dmg/*.dmg
+          path: wisper/target/universal-apple-darwin/release/bundle/dmg/*.dmg
           if-no-files-found: error
 
   github-release:
@@ -147,7 +149,7 @@ jobs:
           body: |
             ## Install notes
 
-            1. Pick the installer for your platform (NVIDIA → Windows CUDA, AMD/Intel → Linux Vulkan, Mac → macOS).
+            1. Pick the installer for your platform (NVIDIA → Windows CUDA, AMD/Intel GPU → Linux Vulkan, Mac → universal macOS DMG for Intel and Apple Silicon).
             2. Download a Whisper GGML model after install — models are not bundled. See `wisper/scripts/download-model.ps1` in the repo.
             3. For YouTube/URL import, install [yt-dlp](https://github.com/yt-dlp/yt-dlp) separately.
             4. For full-length MP3 import, install [ffmpeg](https://ffmpeg.org/) (symphonia can truncate some VBR MP3s; Wisper falls back to ffmpeg when installed).
