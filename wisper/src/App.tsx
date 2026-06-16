@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import "./App.css";
+import { GUIDE_COMPLETE_KEY, WelcomeGuide } from "./WelcomeGuide";
 
 interface TranscriptSegment {
   start_ms: number;
@@ -120,6 +121,7 @@ type ComputeChoice = "cpu" | "gpu";
 
 const COMPUTE_STORAGE_KEY = "wisper-compute-backend";
 const LANGUAGE_STORAGE_KEY = "wisper-language";
+const ADVANCED_STORAGE_KEY = "wisper-show-advanced";
 
 const LANGUAGE_OPTIONS = [
   { value: "auto", label: "Auto-detect" },
@@ -206,9 +208,15 @@ function App() {
   const [library, setLibrary] = useState<RecordingSummary[]>([]);
   const [libraryQuery, setLibraryQuery] = useState("");
   const [activeTitle, setActiveTitle] = useState<string | null>(null);
-  const [status, setStatus] = useState("Pick an audio file to transcribe locally.");
+  const [status, setStatus] = useState("Choose an audio file or tap Record to begin.");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showWelcome, setShowWelcome] = useState(
+    () => localStorage.getItem(GUIDE_COMPLETE_KEY) !== "1",
+  );
+  const [showAdvanced, setShowAdvanced] = useState(
+    () => localStorage.getItem(ADVANCED_STORAGE_KEY) === "1",
+  );
   const [progress, setProgress] = useState<TranscriptionProgress | null>(null);
   const [fallbackNotice, setFallbackNotice] = useState<GpuFallbackNotice | null>(
     null,
@@ -367,7 +375,7 @@ function App() {
 
     const unlistenComplete = listen<TranscribeResult>(
       "transcription-complete",
-      async       (event) => {
+      async (event) => {
         setBusy(false);
         setProgress(null);
         setDownloadProgress(null);
@@ -470,6 +478,22 @@ function App() {
     localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
   }
 
+  function toggleAdvanced() {
+    setShowAdvanced((prev) => {
+      const next = !prev;
+      localStorage.setItem(ADVANCED_STORAGE_KEY, next ? "1" : "0");
+      return next;
+    });
+  }
+
+  function openWelcomeGuide() {
+    setShowWelcome(true);
+  }
+
+  function closeWelcomeGuide() {
+    setShowWelcome(false);
+  }
+
   async function pickFile() {
     setError(null);
     const selected = await open({
@@ -517,8 +541,9 @@ function App() {
     options?: { source?: "mic" | "import" | "url"; title?: string; sourceUrl?: string },
   ) {
     if (!modelStatus?.ready) {
-      setError(modelStatus?.hint ?? "Whisper model not found. Download a GGML .bin file first.");
-      setStatus("Transcription blocked until a model is installed.");
+      setError("Speech model not installed yet.");
+      setStatus("Open Get started to download the model (one-time setup).");
+      setShowWelcome(true);
       return;
     }
 
@@ -713,9 +738,7 @@ function App() {
   }
 
   const gpuLabel = computeInfo?.gpu_backend ?? "GPU";
-  const setupIncomplete =
-    modelStatus !== null &&
-    (!modelStatus.ready || (ytDlpStatus !== null && !ytDlpStatus.available));
+  const modelMissing = modelStatus !== null && !modelStatus.ready;
   const downloading = busy && downloadProgress !== null;
   const transcribing = busy && !downloading;
   const showUrlSteps = urlJobActive && busy;
@@ -732,55 +755,50 @@ function App() {
         : "";
 
   return (
+    <>
+      <WelcomeGuide
+        open={showWelcome}
+        modelReady={modelStatus?.ready ?? false}
+        onFinish={closeWelcomeGuide}
+        onRefreshModel={refreshModelStatus}
+      />
     <main className="app">
       <header className="header">
         <div className="header-main">
-          <p className="eyebrow">Phase 1 · local-first</p>
           <h1>Wisper</h1>
           <p className="subtitle">
-            Transcription runs entirely on your machine via whisper.cpp.
+            Turn speech into text on your computer — private and offline.
           </p>
         </div>
-        <button
-          type="button"
-          className="about-trigger"
-          onClick={() => setShowAbout(true)}
-          aria-haspopup="dialog"
-        >
-          About
-        </button>
+        <div className="header-actions">
+          <button
+            type="button"
+            className="about-trigger"
+            onClick={openWelcomeGuide}
+          >
+            Get started
+          </button>
+          <button
+            type="button"
+            className="about-trigger"
+            onClick={() => setShowAbout(true)}
+            aria-haspopup="dialog"
+          >
+            About
+          </button>
+        </div>
       </header>
 
-      {setupIncomplete && (
+      {modelMissing && !showWelcome && (
         <section className="panel onboarding" aria-live="polite">
-          <h2>First-run setup</h2>
-          <ul className="onboarding-list">
-            {modelStatus && !modelStatus.ready && (
-              <li>
-                <strong>Whisper model</strong> — {modelStatus.hint}
-                <p className="hint">
-                  Models folder: <code>{modelStatus.models_dir}</code>
-                </p>
-                <p className="hint">
-                  From the repo:{" "}
-                  <code>wisper/scripts/download-model.ps1</code> (or download from{" "}
-                  <a
-                    href="https://huggingface.co/ggerganov/whisper.cpp"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Hugging Face
-                  </a>
-                  ).
-                </p>
-              </li>
-            )}
-            {ytDlpStatus && !ytDlpStatus.available && (
-              <li>
-                <strong>URL import (optional)</strong> — {ytDlpStatus.hint}
-              </li>
-            )}
-          </ul>
+          <h2>One more step</h2>
+          <p className="guide-lead">
+            Wisper needs a speech model before it can transcribe. Tap Get started and we&apos;ll
+            walk you through a one-time download (~150 MB).
+          </p>
+          <button type="button" className="primary" onClick={openWelcomeGuide}>
+            Open setup guide
+          </button>
         </section>
       )}
 
@@ -858,69 +876,8 @@ function App() {
         </div>
       )}
 
-      <section className="panel">
-        <h2 className="panel-title">Compute</h2>
-        <div className="compute-toggle" role="radiogroup" aria-label="Compute device">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={computeBackend === "cpu"}
-            className={computeBackend === "cpu" ? "active" : ""}
-            onClick={() => selectBackend("cpu")}
-            disabled={busy}
-          >
-            CPU
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={computeBackend === "gpu"}
-            className={computeBackend === "gpu" ? "active" : ""}
-            onClick={() => selectBackend("gpu")}
-            disabled={busy || !computeInfo?.gpu_available}
-            title={
-              computeInfo?.gpu_available
-                ? `Use ${gpuLabel} acceleration`
-                : "GPU not available in this build"
-            }
-          >
-            {gpuLabel}
-          </button>
-        </div>
-        <p className="hint compute-hint">{computeHint(computeInfo)}</p>
-        {computeInfo && (
-          <p className="hint compute-meta">
-            Host CPU: <code>{computeInfo.cpu_architecture}</code>
-            {computeInfo.supports_cpu_fallback && " · automatic GPU → CPU fallback enabled"}
-          </p>
-        )}
-      </section>
-
-      <section className="panel">
-        <h2 className="panel-title">Language</h2>
-        <label className="field-label" htmlFor="language-select">
-          Transcription language
-        </label>
-        <select
-          id="language-select"
-          className="language-select"
-          value={language}
-          onChange={(e) => selectLanguage(e.target.value)}
-          disabled={busy || isRecording}
-        >
-          {LANGUAGE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <p className="hint">
-          Auto-detect works for most imports. Pick a language if results are wrong.
-        </p>
-      </section>
-
       <section className={`panel import-panel${dragOver ? " drag-over" : ""}`}>
-        <h2 className="panel-title">Record or import</h2>
+        <h2 className="panel-title">Transcribe audio</h2>
         <p className="drop-hint">
           Drop an audio or video file here, or use the buttons below.
         </p>
@@ -962,40 +919,51 @@ function App() {
           )}
         </div>
 
-        <div className="url-import">
-          <label className="field-label" htmlFor="url-input">
-            Import from URL
-          </label>
-          <div className="url-row">
-            <input
-              id="url-input"
-              type="url"
-              className="url-input"
-              placeholder="https://www.youtube.com/watch?v=…"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              disabled={busy || isRecording}
-            />
-            <button
-              type="button"
-              className="primary"
-              onClick={importUrlAndTranscribe}
-              disabled={busy || isRecording || !ytDlpStatus?.available || !urlInput.trim()}
-              title={
-                ytDlpStatus?.available
-                  ? undefined
-                  : "Install yt-dlp first (see hint below)"
-              }
-            >
-              Download & transcribe
-            </button>
+        {showAdvanced && (
+          <div className="url-import">
+            <label className="field-label" htmlFor="url-input">
+              Import from URL
+            </label>
+            <div className="url-row">
+              <input
+                id="url-input"
+                type="url"
+                className="url-input"
+                placeholder="https://www.youtube.com/watch?v=…"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                disabled={busy || isRecording}
+              />
+              <button
+                type="button"
+                className="primary"
+                onClick={importUrlAndTranscribe}
+                disabled={busy || isRecording || !ytDlpStatus?.available || !urlInput.trim()}
+                title={
+                  ytDlpStatus?.available
+                    ? undefined
+                    : "Install yt-dlp first (see hint below)"
+                }
+              >
+                Download & transcribe
+              </button>
+            </div>
+            {ytDlpStatus && (
+              <p className={`hint${ytDlpStatus.available ? "" : " warn"}`}>
+                {ytDlpStatus.hint}
+              </p>
+            )}
           </div>
-          {ytDlpStatus && (
-            <p className={`hint${ytDlpStatus.available ? "" : " warn"}`}>
-              {ytDlpStatus.hint}
-            </p>
-          )}
-        </div>
+        )}
+
+        {!showAdvanced && (
+          <p className="hint advanced-hint">
+            <button type="button" className="link-button" onClick={toggleAdvanced}>
+              Advanced settings
+            </button>
+            {" "}— language, GPU, URL import, and model details.
+          </p>
+        )}
 
         {isRecording && (
           <div className="recording-block" aria-live="polite">
@@ -1084,6 +1052,89 @@ function App() {
         {error && <p className="error">{error}</p>}
       </section>
 
+      {showAdvanced && (
+        <>
+          <section className="panel advanced-panel">
+            <div className="advanced-header">
+              <h2 className="panel-title">Advanced settings</h2>
+              <button type="button" className="link-button" onClick={toggleAdvanced}>
+                Hide
+              </button>
+            </div>
+
+            <h3 className="advanced-subtitle">Language</h3>
+            <label className="field-label" htmlFor="language-select">
+              Transcription language
+            </label>
+            <select
+              id="language-select"
+              className="language-select"
+              value={language}
+              onChange={(e) => selectLanguage(e.target.value)}
+              disabled={busy || isRecording}
+            >
+              {LANGUAGE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <p className="hint">
+              Auto-detect works for most files. Pick a language if results are wrong.
+            </p>
+
+            <h3 className="advanced-subtitle">Compute</h3>
+            <div className="compute-toggle" role="radiogroup" aria-label="Compute device">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={computeBackend === "cpu"}
+                className={computeBackend === "cpu" ? "active" : ""}
+                onClick={() => selectBackend("cpu")}
+                disabled={busy}
+              >
+                CPU
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={computeBackend === "gpu"}
+                className={computeBackend === "gpu" ? "active" : ""}
+                onClick={() => selectBackend("gpu")}
+                disabled={busy || !computeInfo?.gpu_available}
+                title={
+                  computeInfo?.gpu_available
+                    ? `Use ${gpuLabel} acceleration`
+                    : "GPU not available in this build"
+                }
+              >
+                {gpuLabel}
+              </button>
+            </div>
+            <p className="hint compute-hint">{computeHint(computeInfo)}</p>
+
+            <h3 className="advanced-subtitle">Speech model</h3>
+            {modelStatus?.ready ? (
+              <p className="model-ready">Installed and ready</p>
+            ) : (
+              <p className="model-missing">Not installed</p>
+            )}
+            <p className="model-path">{modelPath || "Loading…"}</p>
+            <div className="guide-actions">
+              <button type="button" onClick={openWelcomeGuide}>
+                Open setup guide
+              </button>
+              <button
+                type="button"
+                onClick={() => invoke("open_models_folder").catch((e) => setError(String(e)))}
+              >
+                Open models folder
+              </button>
+            </div>
+          </section>
+        </>
+      )}
+
       {(library.length > 0 || libraryQuery.trim()) && (
         <section className="panel library">
           <h2 className="panel-title">Library</h2>
@@ -1126,22 +1177,6 @@ function App() {
           )}
         </section>
       )}
-
-      <section className="panel model-panel">
-        <h2>Whisper model</h2>
-        {modelStatus?.ready ? (
-          <p className="model-ready">Ready</p>
-        ) : (
-          <p className="model-missing">Not installed</p>
-        )}
-        <p className="model-path">{modelPath || "Loading…"}</p>
-        {!modelStatus?.ready && (
-          <p className="hint">
-            Place any <code>ggml-*.bin</code> model in the models folder (e.g.{" "}
-            <code>ggml-large-v3-turbo.bin</code>).
-          </p>
-        )}
-      </section>
 
       {segments.length > 0 && (
         <section className="panel transcript">
@@ -1188,6 +1223,7 @@ function App() {
         </section>
       )}
     </main>
+    </>
   );
 }
 

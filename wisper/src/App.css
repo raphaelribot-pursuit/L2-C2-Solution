@@ -49,6 +49,17 @@ body {
   min-width: 0;
 }
 
+.header-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.header-actions .about-trigger {
+  margin-top: 0;
+}
+
 .about-trigger {
   flex-shrink: 0;
   margin-top: 0.25rem;
@@ -122,6 +133,130 @@ body {
   margin: 0;
   border-top: 1px solid #2a2f3a;
   padding-top: 0.75rem;
+}
+
+.guide-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.guide-dialog {
+  width: min(100%, 440px);
+  margin: 0;
+}
+
+.guide-eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7dd3a8;
+}
+
+.guide-lead {
+  margin: 0 0 1.25rem;
+  color: #c4c7c5;
+  line-height: 1.55;
+}
+
+.guide-primary {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+}
+
+.guide-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}
+
+.guide-actions button {
+  width: 100%;
+}
+
+.guide-skip {
+  margin-top: 0.75rem;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #8ab4f8;
+  font-size: 0.9rem;
+  padding: 0.35rem;
+}
+
+.guide-skip:hover:not(:disabled) {
+  background: transparent;
+  text-decoration: underline;
+}
+
+.guide-steps {
+  margin: 0 0 1rem;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  color: #e8eaed;
+}
+
+.guide-note {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: #9aa0a6;
+}
+
+.guide-progress {
+  margin-bottom: 1rem;
+}
+
+.advanced-hint {
+  margin-top: 1rem;
+  margin-bottom: 0;
+}
+
+.advanced-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.advanced-header .panel-title {
+  margin: 0;
+}
+
+.advanced-subtitle {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #b8c0cc;
+}
+
+.advanced-subtitle:first-of-type {
+  margin-top: 0;
+}
+
+.link-button {
+  border: none;
+  background: transparent;
+  color: #8ab4f8;
+  padding: 0;
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-button:hover:not(:disabled) {
+  background: transparent;
+  color: #aecbfa;
 }
 
 .eyebrow {
@@ -467,6 +602,11 @@ button:disabled {
 .onboarding {
   border-color: #5c4d1f;
   background: #2a2418;
+}
+
+.onboarding h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
 }
 
 .onboarding-list {

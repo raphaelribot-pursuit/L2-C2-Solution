@@ -16,7 +16,10 @@ pub use compute::{
 pub use engine::WhisperEngine;
 pub use error::WisperError;
 pub use export::format_transcript_txt;
-pub use model::{model_status, resolve_model_path, ModelStatus};
+pub use model::{
+    download_starter_model, import_model_file, model_status, resolve_model_path, ModelStatus,
+    StarterModel,
+};
 pub use audio::save_mic_wav;
 pub use fetch::{download_url, normalize_url, resolve_yt_dlp, yt_dlp_status, DownloadProgress, UrlDownloadResult, YtDlpStatus};
 pub use storage::{RecordingSource, RecordingSummary, Storage};

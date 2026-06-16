@@ -1,6 +1,6 @@
 [package]
 name = "wisper-core"
-version = "0.2.0-beta.14"
+version = "0.2.0-beta.15"
 edition = "2021"
 description = "Local-first audio pipeline and whisper.cpp transcription for Wisper"
 
@@ -20,6 +20,7 @@ symphonia = { version = "0.5", features = ["mp3", "aac", "flac", "ogg", "wav", "
 thiserror = "2"
 url = "2"
 uuid = { version = "1", features = ["v4"] }
+ureq = { version = "2.12", default-features = false, features = ["tls"] }
 whisper-rs = { version = "0.16", default-features = false }
 
 # Metal on Apple Silicon and Intel Macs (whisper.cpp GGML_METAL).

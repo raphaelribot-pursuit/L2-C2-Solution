@@ -5,7 +5,28 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/aislingld-pursuit/L2-Clone-Prodject/compare/v0.1.0...HEAD)
+## [0.2.0-beta.15](https://github.com/aislingld-pursuit/L2-Clone-Prodject/releases/tag/v0.2.0-beta.15) - 2026-06-16
+
+### Added
+
+- **Welcome guide** — first-run setup wizard with plain-language steps (welcome → download model → how to transcribe).
+- **One-click model download** — in-app `base` speech model download (~150 MB) via `start_model_download`; no scripts or terminal.
+- **Model import** — pick an existing `.bin` file or open the models folder from Advanced settings.
+- **Get started** header button — reopens the guide anytime.
+
+### Changed
+
+- **Simpler main UI** — Record / Choose file / Transcribe up front; language, GPU, URL import, and model details under **Advanced settings** (hidden by default).
+- **Friendlier onboarding** — replaced developer setup banner (Hugging Face paths, `download-model.ps1`) with “Open setup guide”.
+- **Transcription guard** — missing model opens the guide instead of technical error text.
+
+### Fixed
+
+- **`open_models_folder`** — convert `PathBuf` to `String` for `tauri-plugin-opener` on Windows/macOS builds.
+
+**Tag `v0.2.0-beta.15`** — partner-friendly onboarding for Intel and Apple Silicon Mac testers (`_x64.dmg` / `_aarch64.dmg`).
+
+## [Unreleased](https://github.com/aislingld-pursuit/L2-Clone-Prodject/compare/v0.2.0-beta.15...HEAD)
 
 ### Added
 
@@ -54,20 +75,20 @@ Target: **beta deployable** (installable build for trusted testers), then **Phas
 | ---------------------------------------------------- | ---------------------------------------------------------------------------- |
 | Phase 1 exit QA (manual)                             | Automated preflight passed — manual checklist pending (`phase1-exit-qa.ps1`) |
 | Long MP3 decode (ffmpeg fallback)                    | Done — verified 12-min + 59-min MP3 on CUDA                                  |
-| Release CI (tag builds)                              | **In progress** — beta.14 fixes macOS bundler path for Apple Silicon        |
+| Release CI (tag builds)                              | **Done** — beta.14 macOS bundler path; beta.15 welcome guide                |
 | Desktop smoke (frontend build in CI)                 | Done — `npm run build` in CPU smoke job                                      |
 | Tier 1 bug fixes (mic, URL errors, orphan downloads) | Done                                                                         |
 | Security SEC-001 / SEC-002                           | Done — save dialog export + URL SSRF hardening                               |
 | Security SEC-003+ (CSP, capabilities)                | Pending — before wider beta                                                  |
 | Video import verify (MP4/MOV)                        | Automated symphonia test + manual drag-drop                                  |
 | Phase 2 minimum (export, search, delete)             | Done — TXT export, clipboard, FTS search, delete                             |
-| Release pipeline (GitHub Releases)                   | **Done** — [v0.2.0-beta.11](https://github.com/aislingld-pursuit/L2-Clone-Prodject/releases/tag/v0.2.0-beta.11); beta.14 adds Intel Mac `_x64.dmg` |
-| First-run onboarding (model + yt-dlp)                | Done — setup banner + model guard                                            |
-| Week 2 UX (progressive disclosure)                   | PRD done — implementation pending                                            |
-| Version sync (UI vs tags)                            | **0.2.0-beta.14** — next tag                                                 |
+| Release pipeline (GitHub Releases)                   | **Done** — [v0.2.0-beta.11](https://github.com/aislingld-pursuit/L2-Clone-Prodject/releases/tag/v0.2.0-beta.11); beta.15 adds welcome guide |
+| First-run onboarding (model + yt-dlp)                | Done — welcome guide + one-click model download (beta.15)                    |
+| Week 2 UX (progressive disclosure)                   | **Done** — welcome guide + advanced settings (beta.15)                       |
+| Version sync (UI vs tags)                            | **0.2.0-beta.15**                                                            |
 
 
-**Tag `v0.2.0-beta.14`** — macOS native Apple Silicon DMG + Intel cross-compile DMG; Windows/Linux unchanged from beta.11.
+**Tag `v0.2.0-beta.15`** — partner-friendly onboarding; macOS `_x64.dmg` for Intel Mac testers (e.g. Jimmy's 2020 MacBook Pro).
 
 See local [ROADMAP.md](./ROADMAP.md), [TODO.md](./TODO.md), [QA-CHECKLIST.md](./QA-CHECKLIST.md).
 

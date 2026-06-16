@@ -9,12 +9,13 @@ use std::time::Duration;
 use mic::{MicRecorder, MicRecordingStatus};
 use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_opener::OpenerExt;
 use uuid::Uuid;
 use wisper_core::{
-    app_about, compute_info, download_url, format_transcript_txt, model_status, resolve_model_path,
-    resolve_yt_dlp, transcribe_with_engine, yt_dlp_status, AppAbout, ComputeBackend, ComputeInfo,
-    DownloadProgress, ModelStatus,
-    GpuFallbackNotice, RecordingSource, RecordingSummary, Storage, TranscribeOptions,
+    app_about, compute_info, download_starter_model, download_url, format_transcript_txt,
+    import_model_file, model_status, resolve_model_path, resolve_yt_dlp, transcribe_with_engine,
+    yt_dlp_status, AppAbout, ComputeBackend, ComputeInfo, DownloadProgress, ModelStatus,
+    StarterModel, GpuFallbackNotice, RecordingSource, RecordingSummary, Storage, TranscribeOptions,
     TranscriptSegment, TranscriptionProgress, WhisperEngine, WisperError, YtDlpStatus,
 };
 
@@ -235,6 +236,46 @@ fn get_model_path(app: tauri::AppHandle) -> Result<String, String> {
 #[tauri::command]
 fn get_model_status(app: tauri::AppHandle) -> ModelStatus {
     model_status(&models_dir(&app))
+}
+
+#[tauri::command]
+fn open_models_folder(app: tauri::AppHandle) -> Result<(), String> {
+    let dir = models_dir(&app);
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    app.opener()
+        .open_path(
+            dir.to_string_lossy().into_owned(),
+            None::<&str>,
+        )
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn import_model_from_path(app: tauri::AppHandle, source_path: String) -> Result<String, String> {
+    let dest = import_model_file(Path::new(&source_path), &models_dir(&app))
+        .map_err(|e| e.to_string())?;
+    Ok(dest.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+fn start_model_download(app: tauri::AppHandle, model: String) -> Result<(), String> {
+    let starter = StarterModel::from_key(&model).ok_or_else(|| "Unknown model".to_string())?;
+    let dir = models_dir(&app);
+    let handle = app.clone();
+    thread::spawn(move || {
+        let result = download_starter_model(&dir, starter, |progress| {
+            let _ = handle.emit("model-download-progress", progress);
+        });
+        match result {
+            Ok(path) => {
+                let _ = handle.emit("model-download-complete", path.to_string_lossy().to_string());
+            }
+            Err(err) => {
+                let _ = handle.emit("model-download-error", err.to_string());
+            }
+        }
+    });
+    Ok(())
 }
 
 #[tauri::command]
@@ -635,6 +676,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_model_path,
             get_model_status,
+            open_models_folder,
+            import_model_from_path,
+            start_model_download,
             get_compute_info,
             get_app_about,
             list_recordings,
