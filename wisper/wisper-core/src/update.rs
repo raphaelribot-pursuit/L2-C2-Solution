@@ -86,8 +86,13 @@ pub fn check_for_update(current_version: &str) -> UpdateCheckResult {
 
     let latest_version = normalize_tag(&release.tag_name).to_string();
     if !is_newer_version(&latest_version, current_version) {
+        let up_to_date_version = if is_newer_version(current_version, &latest_version) {
+            current_version.to_string()
+        } else {
+            latest_version
+        };
         return UpdateCheckResult {
-            latest_version: Some(latest_version),
+            latest_version: Some(up_to_date_version),
             ..base
         };
     }
@@ -169,6 +174,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "windows")]
     fn picks_windows_installer() {
         let assets = vec![GhAsset {
             name: "Wisper_0.2.0-beta.16_x64-setup.exe".into(),
@@ -181,6 +187,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
     fn picks_intel_mac_dmg_not_windows_exe() {
         let assets = vec![
             GhAsset {
@@ -192,11 +199,9 @@ mod tests {
                 browser_download_url: "https://example.com/intel.dmg".into(),
             },
         ];
-        if cfg!(target_os = "macos") && std::env::consts::ARCH == "x86_64" {
-            assert_eq!(
-                pick_release_asset(&assets).map(|asset| asset.name.as_str()),
-                Some("Wisper_0.2.0-beta.16_x64.dmg")
-            );
-        }
+        assert_eq!(
+            pick_release_asset(&assets).map(|asset| asset.name.as_str()),
+            Some("Wisper_0.2.0-beta.16_x64.dmg")
+        );
     }
 }
