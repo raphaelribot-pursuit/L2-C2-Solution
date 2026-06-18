@@ -68,12 +68,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Disabled primary buttons use clearer styling with visible hints (no tooltip-only affordances).
 - GPU fallback copy clarifies CPU restart from the beginning.
 
-## [Unreleased](https://github.com/aislingld-pursuit/L2-Clone-Prodject/compare/v0.2.0-beta.19...HEAD)
+## [0.2.0-beta.20](https://github.com/aislingld-pursuit/L2-Clone-Prodject/compare/v0.2.0-beta.19...v0.2.0-beta.20) - 2026-06-18
 
-### Planned (beta.20)
+### Added
 
-- Advanced panel a11y (`aria-expanded`, Escape).
-- Optional video format hints (no file size caps).
+- **Video format hint** — inline warning when a video file (MP4, MKV, etc.) is selected; proceed allowed, no size cap.
+
+### Changed
+
+- **Advanced panel a11y** — toggle exposes `aria-expanded` and `aria-controls`; panel has `id="advanced-panel"`.
+- **Escape** closes Advanced options; confirms before discarding a non-empty URL import field.
+- **phase1-exit-qa.ps1** — manual checklist extended for Week 2 HEART UX (beta.19 features).
+
+## [Unreleased](https://github.com/aislingld-pursuit/L2-Clone-Prodject/compare/v0.2.0-beta.20...HEAD)
 
 ### Removed from scope
 

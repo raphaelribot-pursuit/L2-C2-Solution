@@ -1,6 +1,6 @@
-# Wisper — TODO (beta.19 feature gates)
+# Wisper — TODO (beta.20 feature gates)
 
-Last updated: 2026-06-17  
+Last updated: 2026-06-18  
 **Branch:** `Jimmy-Contributions`  
 **Rule:** After each feature → run smoke test → all green → commit → next feature.
 
@@ -44,13 +44,14 @@ Must pass: `cargo test` (wisper-core), `cargo check`, `npm run build`.
 
 ---
 
-## Slice C — beta.20
+## Slice C — beta.20 (one feature → smoke → commit)
 
-- [ ] **C3** — `aria-expanded` / `aria-controls` on Advanced toggle  
-- [ ] **C4** — Escape closes Advanced  
-- [ ] **C2** — Video format hint (warn only, no size cap)  
-- [ ] **C5** — Extend `phase1-exit-qa.ps1`  
-- [ ] Tag `v0.2.0-beta.20`  
+- [x] **C3** — `aria-expanded` / `aria-controls` on Advanced toggle  
+- [x] **C4** — Escape closes Advanced  
+- [x] **C2** — Video format hint (warn only, no size cap)  
+- [x] **C5** — Extend `phase1-exit-qa.ps1`  
+- [x] Bump version → **0.2.0-beta.20** + CHANGELOG  
+- [ ] Tag `v0.2.0-beta.20` + Release CI  
 
 ---
 
