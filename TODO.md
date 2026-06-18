@@ -40,7 +40,7 @@ Must pass: `cargo test` (wisper-core), `cargo check`, `npm run build`.
 - [x] **B3** — Disabled button styling pass  
 - [x] **B4** — GPU fallback copy alignment (if needed)  
 - [x] Bump version → **0.2.0-beta.19** + CHANGELOG  
-- [ ] Tag `v0.2.0-beta.19` + Release CI  
+- [x] Tag `v0.2.0-beta.19` + Release CI  
 
 ---
 
@@ -51,7 +51,7 @@ Must pass: `cargo test` (wisper-core), `cargo check`, `npm run build`.
 - [x] **C2** — Video format hint (warn only, no size cap)  
 - [x] **C5** — Extend `phase1-exit-qa.ps1`  
 - [x] Bump version → **0.2.0-beta.20** + CHANGELOG  
-- [ ] Tag `v0.2.0-beta.20` + Release CI  
+- [x] Tag `v0.2.0-beta.20` + Release CI  
 
 ---
 
