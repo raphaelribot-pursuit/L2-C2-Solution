@@ -172,10 +172,18 @@ const AUDIO_EXTENSIONS = new Set([
   "mkv",
 ]);
 
+const VIDEO_EXTENSIONS = new Set(["mp4", "mov", "webm", "mkv", "avi"]);
+
 function isSupportedAudioPath(path: string): boolean {
   const name = path.split(/[/\\]/).pop() ?? "";
   const ext = name.includes(".") ? name.split(".").pop()?.toLowerCase() : undefined;
   return ext ? AUDIO_EXTENSIONS.has(ext) : false;
+}
+
+function isVideoPath(path: string): boolean {
+  const name = path.split(/[/\\]/).pop() ?? "";
+  const ext = name.includes(".") ? name.split(".").pop()?.toLowerCase() : undefined;
+  return ext ? VIDEO_EXTENSIONS.has(ext) : false;
 }
 
 function formatTimestamp(ms: number): string {
@@ -545,6 +553,29 @@ function App() {
       setShowAdvanced(false);
     }
   }, [isRecording]);
+
+  useEffect(() => {
+    if (!showAdvanced) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      if (showAbout) return;
+
+      if (urlInput.trim()) {
+        const discard = window.confirm(
+          "Close Advanced options and discard the URL in the import field?",
+        );
+        if (!discard) return;
+        setUrlInput("");
+      }
+
+      setShowAdvanced(false);
+      localStorage.setItem(ADVANCED_STORAGE_KEY, "0");
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showAdvanced, urlInput, showAbout]);
 
   function selectBackend(next: ComputeChoice) {
     setComputeBackend(next);
@@ -1072,6 +1103,12 @@ function App() {
         <p className="drop-hint">
           Drop an audio or video file here, or use the buttons below.
         </p>
+        {audioPath && isVideoPath(audioPath) && (
+          <p className="hint warn">
+            That looks like video — Wisper will extract audio for transcription. For
+            best results, try MP3 or WAV if extraction is slow.
+          </p>
+        )}
         <div className="actions">
           {!isRecording ? (
             <button
@@ -1157,7 +1194,13 @@ function App() {
 
         {!showAdvanced && (
           <p className="hint advanced-hint">
-            <button type="button" className="link-button" onClick={toggleAdvanced}>
+            <button
+              type="button"
+              className="link-button"
+              onClick={toggleAdvanced}
+              aria-expanded={showAdvanced}
+              aria-controls="advanced-panel"
+            >
               Advanced options
             </button>
             {" "}— language, GPU, URL import, and model details.
@@ -1254,10 +1297,16 @@ function App() {
 
       {showAdvanced && (
         <>
-          <section className="panel advanced-panel">
+          <section id="advanced-panel" className="panel advanced-panel">
             <div className="advanced-header">
               <h2 className="panel-title">Advanced options</h2>
-              <button type="button" className="link-button" onClick={toggleAdvanced}>
+              <button
+                type="button"
+                className="link-button"
+                onClick={toggleAdvanced}
+                aria-expanded={showAdvanced}
+                aria-controls="advanced-panel"
+              >
                 Hide
               </button>
             </div>
