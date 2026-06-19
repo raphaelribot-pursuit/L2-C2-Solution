@@ -4,7 +4,14 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import "./App.css";
+import "./tokens.css";
+import "./resona.css";
 import { GUIDE_COMPLETE_KEY, WelcomeGuide } from "./WelcomeGuide";
+import { AppHeader } from "./AppHeader";
+import { EmptyStateHero } from "./EmptyStateHero";
+import { UrlImportRow } from "./UrlImportRow";
+import { ModelMissingPanel } from "./ModelMissingPanel";
+import { ExportMenu } from "./ExportMenu";
 
 const UPDATE_DISMISS_KEY = "wisper-update-dismissed";
 
@@ -1265,39 +1272,13 @@ function App() {
         onFinish={closeWelcomeGuide}
         onRefreshModel={refreshModelStatus}
       />
-    <main className="app">
-      <header className="header">
-        <div className="header-main">
-          <h1>Wisper</h1>
-          <p className="subtitle">
-            Turn speech into text on your computer — private and offline.
-          </p>
-        </div>
-        <div className="header-actions">
-          <button
-            type="button"
-            className="about-trigger"
-            onClick={openWelcomeGuide}
-          >
-            Get started
-          </button>
-          <button
-            type="button"
-            className="about-trigger"
-            onClick={() => setShowAbout(true)}
-            aria-haspopup="dialog"
-          >
-            About
-          </button>
-        </div>
-      </header>
-
+    <main className="app resona-app">
       {showUpdateBanner && updateInfo?.latest_version && updateReleaseUrl && (
         <section className="panel update-banner" aria-live="polite">
           <div className="update-banner-copy">
             <h2>Update available</h2>
             <p>
-              Wisper <strong>{updateInfo.latest_version}</strong> is ready. You&apos;re on{" "}
+              Resona <strong>{updateInfo.latest_version}</strong> is ready. You&apos;re on{" "}
               {updateInfo.current_version}.
             </p>
           </div>
@@ -1319,18 +1300,11 @@ function App() {
         </section>
       )}
 
-      {modelMissing && !showWelcome && (
-        <section className="panel onboarding" aria-live="polite">
-          <h2>One more step</h2>
-          <p className="guide-lead">
-            Wisper needs a speech model before it can transcribe. Tap Get started and we&apos;ll
-            walk you through a one-time download (~150 MB).
-          </p>
-          <button type="button" className="primary" onClick={openWelcomeGuide}>
-            Open setup guide
-          </button>
-        </section>
-      )}
+      <AppHeader
+        isRecording={isRecording}
+        onGetStarted={openWelcomeGuide}
+        onAbout={() => setShowAbout(true)}
+      />
 
       {showAbout && (
         <div
@@ -1346,7 +1320,7 @@ function App() {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="about-header">
-              <h2 id="about-title">About Wisper</h2>
+              <h2 id="about-title">About Resona</h2>
               <button
                 type="button"
                 className="about-close"
@@ -1447,289 +1421,154 @@ function App() {
         </div>
       )}
 
-      <section className={`panel import-panel${dragOver ? " drag-over" : ""}`}>
-        <h2 className="panel-title">Transcribe audio</h2>
-        <p className="privacy-subtitle">
-          Transcription runs locally on your device. No data leaves your computer.
-        </p>
-        {modelMissing && !showWelcome && (
-          <div className="model-banner" role="status">
-            <p>
-              Speech model not installed yet. Download once to start transcribing.
-            </p>
-            <button type="button" className="primary" onClick={openWelcomeGuide}>
-              Get started
-            </button>
-          </div>
-        )}
-        <p className="drop-hint">
-          Drop one or more audio or video files here, or use the buttons below.
-        </p>
-        {batchProgress && (
-          <p className="hint batch-queue" role="status">
-            Import queue: file {batchProgress.current} of {batchProgress.total}
-          </p>
-        )}
-        {audioPath && isVideoPath(audioPath) && (
-          <p className="hint warn">
-            That looks like video — Wisper will extract audio for transcription. For
-            best results, try MP3 or WAV if extraction is slow.
-          </p>
-        )}
-        <div className="actions">
-          {!isRecording ? (
-            <button
-              type="button"
-              className={`record${modelMissing ? " disabled-muted" : ""}`}
-              onClick={startRecording}
-              disabled={busy || modelMissing}
-            >
-              Record
-            </button>
+      <div className="body-scroll">
+        <div className={`body-card${dragOver ? " drag-over" : ""}`}>
+          {modelMissing && !showWelcome ? (
+            <ModelMissingPanel onOpenGuide={openWelcomeGuide} />
           ) : (
-            <button
-              type="button"
-              className="record stop"
-              onClick={stopRecordingAndTranscribe}
-              disabled={busy}
-            >
-              Stop & transcribe
-            </button>
-          )}
-          <button type="button" onClick={pickFile} disabled={busy || isRecording}>
-            Choose audio file(s)
-          </button>
-          <button
-            type="button"
-            className={`primary${!audioPath || modelMissing ? " disabled-muted" : ""}`}
-            onClick={transcribe}
-            disabled={busy || isRecording || !audioPath || modelMissing}
-          >
-            {busy ? "Transcribing…" : "Transcribe"}
-          </button>
-          {modelMissing && (
-            <p className="hint disabled-hint">
-              Install the speech model first — use Get started above.
-            </p>
-          )}
-          {!modelMissing && !audioPath && !busy && !isRecording && (
-            <p className="hint disabled-hint">Choose or record audio to enable Transcribe.</p>
-          )}
-          {busy && (
-            <button type="button" className="cancel" onClick={cancelTranscription}>
-              Cancel
-            </button>
-          )}
-        </div>
-
-        {showAdvanced && (
-          <div className="url-import">
-            <label className="field-label" htmlFor="url-input">
-              Import from URL
-            </label>
-            <div className="url-row">
-              <input
-                id="url-input"
-                type="url"
-                className="url-input"
-                placeholder="https://www.youtube.com/watch?v=…"
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                disabled={busy || isRecording}
+            <>
+              <h2 className="panel-label">Transcribe</h2>
+              <p className="privacy-subtitle">
+                <span className="privacy-lock" aria-hidden="true">
+                  🔒
+                </span>
+                On-device · nothing leaves your computer
+              </p>
+              <EmptyStateHero
+                dragOver={dragOver}
+                modelMissing={modelMissing}
+                isRecording={isRecording}
+                busy={busy}
+                audioPath={audioPath}
+                showVideoHint={!!(audioPath && isVideoPath(audioPath))}
+                onStartRecording={startRecording}
+                onStopRecording={stopRecordingAndTranscribe}
+                onPickFile={pickFile}
+                onTranscribe={transcribe}
+                onCancel={busy ? cancelTranscription : undefined}
               />
-              <button
-                type="button"
-                className={`primary${!ytDlpStatus?.available || !urlInput.trim() ? " disabled-muted" : ""}`}
-                onClick={importUrlAndTranscribe}
-                disabled={busy || isRecording || !ytDlpStatus?.available || !urlInput.trim()}
-              >
-                Download & transcribe
-              </button>
-            </div>
-            {ytDlpStatus && ytDlpStatus.available && (
-              <p className="hint">{ytDlpStatus.hint}</p>
-            )}
-            {!ytDlpStatus?.available && (
-              <div className="ytdlp-banner">
-                <p className="hint warn">
-                  {ytDlpStatus?.hint ??
-                    "URL import needs yt-dlp. Install it once below, or add yt-dlp to your PATH."}
+              {batchProgress && (
+                <p className="hint batch-queue" role="status">
+                  Import queue: file {batchProgress.current} of {batchProgress.total}
                 </p>
-                <button
-                  type="button"
-                  className="primary"
-                  onClick={installYtDlp}
-                  disabled={busy || isRecording || ytDlpInstalling}
-                >
-                  {ytDlpInstalling ? "Installing yt-dlp…" : "Install yt-dlp"}
-                </button>
-                {ytDlpInstalling && ytDlpInstallProgress && (
-                  <div className="ytdlp-progress" aria-live="polite">
-                    <div
-                      className="progress-track"
-                      role="progressbar"
-                      aria-valuenow={ytDlpInstallProgress.percent ?? 2}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                    >
-                      <div
-                        className="progress-fill download"
-                        style={{
-                          width: `${Math.max(ytDlpInstallProgress.percent ?? 2, 2)}%`,
-                        }}
-                      />
-                    </div>
-                    <p className="progress-meta">{ytDlpInstallProgress.status}</p>
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="ffmpeg-import">
-              <p className="field-label">MP3 / video decode</p>
-              {ffmpegStatus && ffmpegStatus.available && (
-                <p className="hint">{ffmpegStatus.hint}</p>
               )}
-              {!ffmpegStatus?.available && (
-                <div className="ytdlp-banner">
-                  <p className="hint warn">
-                    {ffmpegStatus?.hint ??
-                      "Some MP3 and video files need ffmpeg for full-length decode. Install once below, or add ffmpeg to your PATH."}
-                  </p>
+              <UrlImportRow
+                urlInput={urlInput}
+                busy={busy}
+                isRecording={isRecording}
+                ytDlpStatus={ytDlpStatus}
+                ytDlpInstalling={ytDlpInstalling}
+                ytDlpInstallProgress={ytDlpInstallProgress}
+                onUrlChange={setUrlInput}
+                onImport={importUrlAndTranscribe}
+                onInstallYtDlp={installYtDlp}
+              />
+              {!showAdvanced && (
+                <p className="hint advanced-hint">
                   <button
                     type="button"
-                    className="primary"
-                    onClick={installFfmpeg}
-                    disabled={busy || isRecording || ffmpegInstalling}
+                    className="link-button"
+                    onClick={toggleAdvanced}
+                    aria-expanded={showAdvanced}
+                    aria-controls="advanced-panel"
                   >
-                    {ffmpegInstalling ? "Installing ffmpeg…" : "Install ffmpeg"}
+                    Advanced options
                   </button>
-                  {ffmpegInstalling && ffmpegInstallProgress && (
-                    <div className="ytdlp-progress" aria-live="polite">
-                      <div
-                        className="progress-track"
-                        role="progressbar"
-                        aria-valuenow={ffmpegInstallProgress.percent ?? 2}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
+                  {" "}
+                  — language, GPU, model size
+                </p>
+              )}
+
+              {isRecording && (
+                <div className="recording-block" aria-live="polite">
+                  <div
+                    className="level-track"
+                    role="meter"
+                    aria-valuenow={Math.round((recordingStatus?.peak ?? 0) * 100)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label="Input level"
+                  >
+                    <div
+                      className="level-fill"
+                      style={{
+                        width: `${Math.min(100, Math.round((recordingStatus?.peak ?? 0) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="recording-meta">
+                    {recordingStatus
+                      ? `${formatElapsed(recordingStatus.duration_ms)} · ${recordingStatus.device_name}`
+                      : "Starting microphone…"}
+                  </p>
+                </div>
+              )}
+
+              {busy && (
+                <div className="progress-block" aria-live="polite">
+                  {showUrlSteps && (
+                    <div className="progress-steps" aria-hidden="true">
+                      <span
+                        className={`progress-step${downloading ? " active" : transcribing ? " done" : ""}`}
                       >
-                        <div
-                          className="progress-fill download"
-                          style={{
-                            width: `${Math.max(ffmpegInstallProgress.percent ?? 2, 2)}%`,
-                          }}
-                        />
-                      </div>
-                      <p className="progress-meta">{ffmpegInstallProgress.status}</p>
+                        1 · Download
+                      </span>
+                      <span className="progress-step-sep">→</span>
+                      <span className={`progress-step${transcribing ? " active" : ""}`}>
+                        2 · Transcribe
+                      </span>
                     </div>
+                  )}
+                  <div
+                    className="progress-track"
+                    role="progressbar"
+                    aria-valuenow={progressPercent}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={progressStep ? `${progressStep} progress` : "Transcription progress"}
+                  >
+                    <div
+                      className={`progress-fill${downloading ? " download" : " transcribe"}`}
+                      style={{ width: `${Math.max(progressPercent, busy ? 2 : 0)}%` }}
+                    />
+                  </div>
+                  <p className="progress-meta">
+                    {progressStep && <span className="progress-phase">{progressStep}</span>}
+                    {progressLabel || (transcribing ? "Transcribing…" : "Working…")}
+                    {transcribing && progress?.duration_ms
+                      ? ` · ${formatTimestamp(progress.duration_ms)} audio`
+                      : ""}
+                  </p>
+                  {downloading && (
+                    <p className="progress-hint">
+                      Network used for download only — transcription stays offline.
+                    </p>
                   )}
                 </div>
               )}
-            </div>
-          </div>
-        )}
 
-        {!showAdvanced && (
-          <p className="hint advanced-hint">
-            <button
-              type="button"
-              className="link-button"
-              onClick={toggleAdvanced}
-              aria-expanded={showAdvanced}
-              aria-controls="advanced-panel"
-            >
-              Advanced options
-            </button>
-            {" "}— language, GPU, URL import, and model details.
-          </p>
-        )}
+              {fallbackNotice && (
+                <div className="fallback-notice" role="status" aria-live="polite">
+                  <strong>{fallbackNotice.from_gpu} unavailable</strong>
+                  <span>
+                    Restarting on CPU ({computeInfo?.cpu_architecture ?? "ggml-cpu"}) from the
+                    beginning.
+                  </span>
+                </div>
+              )}
 
-        {isRecording && (
-          <div className="recording-block" aria-live="polite">
-            <div
-              className="level-track"
-              role="meter"
-              aria-valuenow={Math.round((recordingStatus?.peak ?? 0) * 100)}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="Input level"
-            >
-              <div
-                className="level-fill"
-                style={{
-                  width: `${Math.min(100, Math.round((recordingStatus?.peak ?? 0) * 100))}%`,
-                }}
-              />
-            </div>
-            <p className="recording-meta">
-              {recordingStatus
-                ? `${formatElapsed(recordingStatus.duration_ms)} · ${recordingStatus.device_name}`
-                : "Starting microphone…"}
-            </p>
-          </div>
-        )}
+              {lastUsedCpuFallback && !busy && !fallbackNotice && (
+                <div className="fallback-complete" role="status">
+                  Completed on CPU after GPU restarted from the beginning.
+                </div>
+              )}
 
-        {busy && (
-          <div className="progress-block" aria-live="polite">
-            {showUrlSteps && (
-              <div className="progress-steps" aria-hidden="true">
-                <span
-                  className={`progress-step${downloading ? " active" : transcribing ? " done" : ""}`}
-                >
-                  1 · Download
-                </span>
-                <span className="progress-step-sep">→</span>
-                <span className={`progress-step${transcribing ? " active" : ""}`}>
-                  2 · Transcribe
-                </span>
-              </div>
-            )}
-            <div
-              className="progress-track"
-              role="progressbar"
-              aria-valuenow={progressPercent}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={progressStep ? `${progressStep} progress` : "Transcription progress"}
-            >
-              <div
-                className={`progress-fill${downloading ? " download" : " transcribe"}`}
-                style={{ width: `${Math.max(progressPercent, busy ? 2 : 0)}%` }}
-              />
-            </div>
-            <p className="progress-meta">
-              {progressStep && <span className="progress-phase">{progressStep}</span>}
-              {progressLabel || (transcribing ? "Transcribing…" : "Working…")}
-              {transcribing && progress?.duration_ms
-                ? ` · ${formatTimestamp(progress.duration_ms)} audio`
-                : ""}
-            </p>
-            {downloading && (
-              <p className="progress-hint">
-                Network used for download only — transcription stays offline.
-              </p>
-            )}
-          </div>
-        )}
-
-        {fallbackNotice && (
-          <div className="fallback-notice" role="status" aria-live="polite">
-            <strong>{fallbackNotice.from_gpu} unavailable</strong>
-            <span>
-              Restarting on CPU ({computeInfo?.cpu_architecture ?? "ggml-cpu"}) from the
-              beginning.
-            </span>
-          </div>
-        )}
-
-        {lastUsedCpuFallback && !busy && !fallbackNotice && (
-          <div className="fallback-complete" role="status">
-            Completed on CPU after GPU restarted from the beginning.
-          </div>
-        )}
-
-        <p className="status">{status}</p>
-        {error && <p className="error">{error}</p>}
-      </section>
+              <p className="status">{status}</p>
+              {error && <p className="error">{error}</p>}
+            </>
+          )}
+        </div>
+      </div>
 
       {showAdvanced && (
         <>
@@ -1875,6 +1714,49 @@ function App() {
                 Open models folder
               </button>
             </div>
+
+            <h3 className="advanced-subtitle">MP3 / video decode</h3>
+            <div className="ffmpeg-import">
+              {ffmpegStatus && ffmpegStatus.available && (
+                <p className="hint">{ffmpegStatus.hint}</p>
+              )}
+              {!ffmpegStatus?.available && (
+                <div className="ytdlp-banner">
+                  <p className="hint warn">
+                    {ffmpegStatus?.hint ??
+                      "Some MP3 and video files need ffmpeg for full-length decode. Install once below, or add ffmpeg to your PATH."}
+                  </p>
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={installFfmpeg}
+                    disabled={busy || isRecording || ffmpegInstalling}
+                  >
+                    {ffmpegInstalling ? "Installing ffmpeg…" : "Install ffmpeg"}
+                  </button>
+                  {ffmpegInstalling && ffmpegInstallProgress && (
+                    <div className="ytdlp-progress" aria-live="polite">
+                      <div
+                        className="progress-track"
+                        role="progressbar"
+                        aria-valuenow={ffmpegInstallProgress.percent ?? 2}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                      >
+                        <div
+                          className="progress-fill download"
+                          style={{
+                            width: `${Math.max(ffmpegInstallProgress.percent ?? 2, 2)}%`,
+                          }}
+                        />
+                      </div>
+                      <p className="progress-meta">{ffmpegInstallProgress.status}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {(ytDlpInstallProgress?.automatic || ffmpegInstallProgress?.automatic) && (
               <>
                 <h3 className="advanced-subtitle">Background updates</h3>
@@ -1895,7 +1777,7 @@ function App() {
                   </p>
                 )}
                 <p className="hint">
-                  Wisper checks yt-dlp and ffmpeg you installed through the app about once a week.
+                  Resona checks yt-dlp and ffmpeg you installed through the app about once a week.
                 </p>
               </>
             )}
@@ -1962,15 +1844,12 @@ function App() {
                 <button type="button" onClick={copyTranscript} disabled={busy}>
                   Copy
                 </button>
-                <button type="button" onClick={exportTranscriptTxt} disabled={busy}>
-                  Export TXT
-                </button>
-                <button type="button" onClick={exportTranscriptSrt} disabled={busy}>
-                  Export SRT
-                </button>
-                <button type="button" onClick={exportTranscriptVtt} disabled={busy}>
-                  Export VTT
-                </button>
+                <ExportMenu
+                  disabled={busy}
+                  onExportTxt={exportTranscriptTxt}
+                  onExportSrt={exportTranscriptSrt}
+                  onExportVtt={exportTranscriptVtt}
+                />
                 <button type="button" onClick={exportTranscriptJson} disabled={busy}>
                   JSON
                 </button>

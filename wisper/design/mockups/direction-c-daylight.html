@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wisper — Direction C: Daylight (desktop)</title>
+<style>
+  :root {
+    --bg: #EAF1EC; --surface: #FFFFFF; --surface-alt: #F4F8F4;
+    --hairline: #E0E8E1; --text: #10211B; --muted: #5C6B63;
+    --leaf: #1B6E45; --leaf-deep: #0F4D2F; --teal: #0E7C86; --sand: #C9A24B;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; padding: 32px 16px 48px;
+  }
+  .window {
+    width: 960px; height: 720px; background: var(--surface); border-radius: 12px;
+    border: 1px solid var(--hairline); box-shadow: 0 30px 70px -35px rgba(16,33,27,.25);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .titlebar { height: 36px; background: #f6f9f7; border-bottom: 1px solid var(--hairline); display: flex; align-items: center; padding: 0 14px; gap: 8px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .titlebar span { margin-left: 8px; font-size: 12px; color: var(--muted); }
+  .app { flex: 1; overflow: auto; padding: 24px 32px; max-width: 720px; margin: 0 auto; width: 100%; }
+  header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+  h1 { font-size: 28px; font-weight: 600; letter-spacing: -.02em; }
+  h1 span { color: var(--leaf); }
+  .descriptor { font-size: 12px; color: var(--muted); }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--hairline); background: var(--surface-alt); border-radius: 8px; padding: 8px 14px; font-size: 13px; }
+  .btn.primary { background: var(--leaf); color: #fff; border-color: var(--leaf); font-weight: 600; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+  .tab { font: inherit; cursor: pointer; border: 1px solid var(--hairline); background: var(--surface-alt); color: var(--muted); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 600; }
+  .tab.on { background: #e8f5ec; color: var(--leaf-deep); border-color: var(--leaf); }
+  .state { display: none; } .state.on { display: block; }
+  .panel { background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px; padding: 20px; box-shadow: 0 1px 3px rgba(16,33,27,.04); }
+  .panel-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+  .privacy { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+  .hero-drop {
+    min-height: 200px; border: 2px dashed #c5d5c8; border-radius: 14px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    padding: 24px; text-align: center; margin-bottom: 16px; background: var(--surface-alt);
+  }
+  .hero-drop:hover { border-color: var(--leaf); }
+  .hero-drop h2 { font-size: 18px; color: var(--leaf-deep); }
+  .hero-drop p { font-size: 14px; color: var(--muted); }
+  .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .url-row { display: flex; gap: 8px; }
+  .url-row input { flex: 1; border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 12px; font: inherit; background: #fff; }
+  .setup-panel {
+    background: #f0f7f2; border: 1px solid #c5dcc9; border-radius: 14px; padding: 32px 24px; text-align: center;
+  }
+  .setup-panel h2 { color: var(--leaf-deep); font-size: 22px; }
+  .setup-panel p { color: var(--muted); margin: 10px auto 20px; max-width: 400px; line-height: 1.55; }
+  .legend { margin-top: 24px; max-width: 720px; text-align: center; }
+  .legend h2 { font-size: 20px; } .legend p { font-size: 14px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+</style>
+</head>
+<body>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:12px">960 × 720 · Resona Daylight light theme</p>
+  <div class="window">
+    <div class="titlebar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span>Wisper</span></div>
+    <div class="app">
+      <header>
+        <div><h1>Wisper<span>.</span></h1><p class="descriptor">private voice-to-text</p></div>
+        <div style="display:flex;gap:8px"><button class="btn">About</button><button class="btn">Get started</button></div>
+      </header>
+      <div class="tabs">
+        <button class="tab on" data-state="hero">Empty hero</button>
+        <button class="tab" data-state="model">Model missing</button>
+      </div>
+      <div id="hero" class="state on">
+        <section class="panel">
+          <p class="panel-title">Transcribe audio</p>
+          <p class="privacy">Transcription runs locally. No data leaves your computer.</p>
+          <div class="hero-drop">
+            <h2>Drop audio or video here</h2>
+            <p>Or record / choose a file — all processing stays on-device.</p>
+            <div class="hero-actions">
+              <button class="btn primary">● Record</button>
+              <button class="btn">Choose file</button>
+              <button class="btn primary">Transcribe</button>
+            </div>
+          </div>
+          <div class="url-row">
+            <input placeholder="Paste YouTube or audio URL…" />
+            <button class="btn primary">Download & transcribe</button>
+          </div>
+          <p style="margin-top:12px;font-size:13px;color:var(--muted)"><button style="background:none;border:none;color:var(--teal);text-decoration:underline;cursor:pointer;font:inherit;padding:0">Advanced options</button> — language, GPU, model</p>
+        </section>
+      </div>
+      <div id="model" class="state">
+        <section class="setup-panel">
+          <h2>One more step</h2>
+          <p>Install a speech model to start transcribing. Setup takes about a minute.</p>
+          <button class="btn primary" style="padding:12px 28px;font-size:15px">Open setup guide</button>
+        </section>
+      </div>
+    </div>
+  </div>
+  <div class="legend">
+    <h2>Direction C — Daylight</h2>
+    <p>Resona&apos;s light parity theme. Maximum legibility, Whisper Notes–adjacent feel. Best if you want Wisper to feel approachable on bright screens / classrooms.</p>
+  </div>
+  <script>
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab,.state').forEach(el => el.classList.remove('on'));
+        tab.classList.add('on');
+        document.getElementById(tab.dataset.state).classList.add('on');
+      });
+    });
+  </script>
+</body>
+</html>

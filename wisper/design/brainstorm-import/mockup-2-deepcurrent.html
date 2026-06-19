@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Resona — Direction 2: Deep Current</title>
+<style>
+  :root{
+    --mint:#5FD3A0; --mint-bright:#7FE6B6; --teal:#57C6D6; --leaf:#3FB37E;
+    --bg:#04171C; --screen:#082530; --surface:#0E323E; --surface-2:#0B2B36;
+    --line:#1C4350; --text:#EAF6F1; --muted:#9FB8B5; --sand:#E3C57F;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;
+    background:#021014; color:var(--text); min-height:100vh;
+    display:flex; flex-direction:column; align-items:center; padding:40px 16px;}
+  .phone{width:330px; height:680px; background:#000; border-radius:52px; padding:13px;
+    box-shadow:0 30px 80px -28px rgba(0,0,0,.8);}
+  .screen{position:relative; width:100%; height:100%; background:var(--screen); border-radius:40px; overflow:hidden; display:flex; flex-direction:column;}
+  .island{position:absolute; top:11px; left:50%; transform:translateX(-50%); width:96px; height:26px; background:#000; border-radius:14px; z-index:5;}
+  .statusbar{display:flex; justify-content:space-between; align-items:center; padding:14px 26px 0; font-size:13px; font-weight:600; color:var(--text);}
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:18px 22px 8px;}
+  .brand{display:flex; align-items:center; gap:9px;}
+  .brand .name{font-size:19px; font-weight:600; letter-spacing:-.02em;}
+  .logo{width:30px; height:30px;}
+  .live{display:inline-flex; align-items:center; gap:6px; background:rgba(95,211,160,.16); color:var(--mint-bright);
+    font-size:12px; font-weight:600; padding:6px 11px; border-radius:999px;}
+  .dot{width:8px; height:8px; border-radius:50%; background:var(--mint); animation:blink 1.4s infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+  .steps{display:flex; align-items:center; gap:6px; padding:6px 22px 0; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.08em;}
+  .steps .on{color:var(--teal);}
+  .steps .sep{color:var(--line);}
+  .wavewrap{padding:26px 22px 10px; display:flex; flex-direction:column; align-items:center; gap:6px;}
+  .caption{font-size:12px; color:var(--muted); font-weight:500;}
+  .wave{display:flex; align-items:center; gap:3px; height:88px;}
+  .wave span{width:4px; border-radius:2px; background:var(--mint);}
+  .card{margin:8px 18px; background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:16px;}
+  .card h3{font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px;}
+  .raw{font-size:14px; color:var(--muted); margin-bottom:8px;}
+  .refined{font-size:17px; line-height:1.4; font-weight:500;}
+  .refined b{color:var(--mint-bright);}
+  .fix{display:inline-flex; align-items:center; gap:6px; margin-top:12px; background:rgba(227,197,127,.14); color:var(--sand); border:1px solid rgba(227,197,127,.35);
+    font-size:12px; font-weight:600; padding:6px 10px; border-radius:999px;}
+  .privacy{display:flex; align-items:center; justify-content:center; gap:7px; color:var(--muted); font-size:12px; margin-top:auto; padding:0 22px 6px;}
+  .controls{display:flex; align-items:center; justify-content:center; padding:6px 22px 14px;}
+  .rec{width:76px; height:76px; border-radius:50%; background:var(--mint); border:0; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 8px 24px -6px rgba(95,211,160,.55);}
+  .rec .sq{width:26px; height:26px; border-radius:7px; background:#062018;}
+  .tabbar{display:flex; justify-content:space-around; align-items:center; padding:12px 8px 26px; border-top:1px solid var(--line); background:var(--surface-2);}
+  .tab{display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11px; font-weight:600; color:var(--muted); min-width:64px;}
+  .tab.active{color:var(--mint-bright);}
+  .tab svg{width:24px; height:24px;}
+  .legend{margin-top:24px; text-align:center; max-width:330px; color:#cfe3dd;}
+  .legend .d{font-size:18px; font-weight:600; letter-spacing:-.01em; color:#eaf6f1;}
+  .legend .t{font-size:14px; color:#a9c3bd; margin-top:4px;}
+  .legend .a{font-size:12px; color:#7e9892; margin-top:8px;}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="screen">
+      <div class="island"></div>
+      <div class="statusbar"><span>9:41</span><span>Resona</span></div>
+      <div class="topbar">
+        <div class="brand">
+          <svg class="logo" viewBox="0 0 32 32" role="img" aria-label="Resona logo">
+            <path d="M16 3 C23 9 25 19 16 29 C7 19 9 9 16 3 Z" fill="#3FB37E"/>
+            <g stroke="#072019" stroke-width="1.7" stroke-linecap="round">
+              <line x1="11.5" y1="19" x2="11.5" y2="15"/><line x1="14" y1="21" x2="14" y2="13"/>
+              <line x1="16.5" y1="23" x2="16.5" y2="11"/><line x1="19" y1="21" x2="19" y2="13"/>
+              <line x1="21.5" y1="19" x2="21.5" y2="15"/>
+            </g>
+          </svg>
+          <span class="name">Resona</span>
+        </div>
+        <span class="live"><span class="dot"></span>Listening</span>
+      </div>
+      <div class="steps"><span class="on">Voice</span><span class="sep">›</span><span>Text</span><span class="sep">›</span><span>Refine</span></div>
+      <div class="wavewrap">
+        <div class="wave" aria-hidden="true">
+          <span style="height:14px"></span><span style="height:26px"></span><span style="height:44px"></span><span style="height:60px"></span><span style="height:78px"></span><span style="height:50px"></span><span style="height:34px"></span><span style="height:64px"></span><span style="height:40px"></span><span style="height:72px"></span><span style="height:30px"></span><span style="height:56px"></span><span style="height:80px"></span><span style="height:46px"></span><span style="height:62px"></span><span style="height:28px"></span><span style="height:50px"></span><span style="height:38px"></span><span style="height:22px"></span><span style="height:42px"></span><span style="height:16px"></span>
+        </div>
+        <span class="caption">Capturing your voice…</span>
+      </div>
+      <div class="card">
+        <h3>Transcript</h3>
+        <div class="raw">"so um i think the the proposal looks good and we should of sent it"</div>
+        <div class="refined">I think the proposal looks <b>good</b>, and we should have sent it.</div>
+        <span class="fix">3 grammar fixes applied</span>
+      </div>
+      <div class="privacy">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9FB8B5" stroke-width="2" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        On-device · nothing leaves your phone
+      </div>
+      <div class="controls">
+        <button class="rec" aria-label="Stop recording"><span class="sq"></span></button>
+      </div>
+      <div class="tabbar">
+        <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4"/></svg>Record</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h9l5 5v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v5h5"/></svg>Files</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Settings</div>
+      </div>
+    </div>
+  </div>
+  <div class="legend">
+    <div class="d">Direction 2 — Deep Current</div>
+    <div class="t">Deep ocean dark mode. Premium, focused, the waveform glows without sacrificing contrast.</div>
+    <div class="a">WCAG AA contrast · system type · 44pt+ targets · safe areas</div>
+  </div>
+</body>
+</html>

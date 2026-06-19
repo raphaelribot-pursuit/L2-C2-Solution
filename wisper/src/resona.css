@@ -1,0 +1,402 @@
+/* Resona A+B hybrid layout — pairs with tokens.css + App.css */
+
+.resona-app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.hero-header {
+  background: var(--header-gradient);
+  padding: 1.125rem 1.75rem 0;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.hero-header::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(127, 230, 182, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-header > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand-appmark {
+  flex-shrink: 0;
+  border-radius: 9px;
+}
+
+.brand-text h1 {
+  margin: 0;
+  font-size: 1.625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.brand-dot {
+  color: var(--mint-bright);
+}
+
+.brand-tagline {
+  margin: 0.06rem 0 0;
+  font-size: 0.75rem;
+  color: rgba(234, 246, 241, 0.78);
+  letter-spacing: 0.02em;
+}
+
+.hero-header .header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0;
+}
+
+.btn-ghost {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(192, 57, 43, 0.35);
+  border: 1px solid rgba(231, 76, 60, 0.5);
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e74c3c;
+  animation: record-pulse 1.2s ease-in-out infinite;
+}
+
+.hero-steps {
+  margin: 0.5rem 0 0.65rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.hero-steps .step-on {
+  color: var(--mint-bright);
+}
+
+.hero-steps .step-sep {
+  margin: 0 0.35rem;
+  opacity: 0.6;
+}
+
+.wavewrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 0.875rem;
+}
+
+.wave-bars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 52px;
+}
+
+.wave-bars span {
+  width: 4px;
+  border-radius: 2px;
+  background: rgba(191, 239, 214, 0.85);
+}
+
+.wave-caption {
+  margin: 0.375rem 0 0;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.body-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 0 1.5rem 1.25rem;
+}
+
+.body-card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 16px 16px 14px 14px;
+  margin-top: -0.5rem;
+  padding: 1.25rem 1.375rem 1.375rem;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.panel-label {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.privacy-subtitle {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.hero-drop {
+  min-height: 200px;
+  border: 2px dashed var(--hairline);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(95, 211, 160, 0.05) 0%, transparent 100%);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.hero-drop.drag-over {
+  border-color: var(--mint);
+  box-shadow: inset 0 0 0 1px rgba(95, 211, 160, 0.2);
+}
+
+.hero-drop.dimmed {
+  opacity: 0.72;
+}
+
+.hero-drop-icon {
+  width: 44px;
+  height: 44px;
+  color: var(--mint);
+}
+
+.hero-drop-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.hero-drop-lead {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+  max-width: 380px;
+  line-height: 1.5;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  justify-content: center;
+}
+
+.url-block {
+  margin-top: 0.25rem;
+}
+
+.url-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.url-input {
+  flex: 1;
+  min-width: 12rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 0.625rem 0.75rem;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.url-input::placeholder {
+  color: #6b7f7c;
+}
+
+.setup-panel {
+  background: linear-gradient(135deg, rgba(95, 211, 160, 0.14) 0%, rgba(87, 198, 214, 0.1) 100%);
+  border: 1px solid rgba(95, 211, 160, 0.4);
+  border-radius: 14px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.setup-appmark {
+  margin-bottom: 0.5rem;
+  border-radius: 14px;
+}
+
+.setup-panel h2 {
+  margin: 0;
+  font-size: 1.375rem;
+}
+
+.setup-panel p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  max-width: 440px;
+}
+
+.setup-tiers {
+  color: var(--mint-bright) !important;
+  font-size: 0.8125rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.setup-cta {
+  font-size: 0.9375rem !important;
+  padding: 0.75rem 1.75rem !important;
+}
+
+.export-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.export-menu-trigger {
+  min-width: 6rem;
+}
+
+.export-menu-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  min-width: 11rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 0.35rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.export-menu-panel button {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.875rem;
+}
+
+.export-menu-panel button:hover:not(:disabled) {
+  background: rgba(95, 211, 160, 0.1);
+}
+
+/* Resona overrides for shared App.css surfaces */
+.resona-app .panel {
+  background: var(--surface);
+  border-color: var(--hairline);
+  border-radius: 14px;
+}
+
+.resona-app button.primary {
+  background: var(--mint);
+  border-color: var(--mint);
+  color: var(--on-mint);
+  font-weight: 600;
+}
+
+.resona-app button.primary:hover:not(:disabled) {
+  background: var(--mint-bright);
+  border-color: var(--mint-bright);
+}
+
+.resona-app button.record {
+  background: rgba(87, 198, 214, 0.1);
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.resona-app button.record:hover:not(:disabled) {
+  background: rgba(87, 198, 214, 0.18);
+}
+
+.resona-app .link-button {
+  color: var(--mint-bright);
+}
+
+.resona-app .link-button:hover:not(:disabled) {
+  color: var(--mint);
+}
+
+.resona-app .library-search,
+.resona-app .language-select,
+.resona-app .segment-edit {
+  background: var(--surface-alt);
+  border-color: var(--hairline);
+  color: var(--text);
+}
+
+.resona-app .update-banner,
+.resona-app .library,
+.resona-app .transcript,
+.resona-app .advanced-panel {
+  margin: 0 1.5rem 1rem;
+}

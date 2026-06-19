@@ -2,18 +2,18 @@
 
 ## Agent status (update this block when anything changes)
 
-**Last updated:** 2026-06-19 · **Owner:** Aisling confirmed hybrid mockup
+**Last updated:** 2026-06-19 · **Owner:** Aisling confirmed hybrid mockup · **Merge gate:** OPEN (Phase A+B wired on `feature/resona-ui`)
 
 | Area | Status |
 |------|--------|
 | **Design direction** | **Locked** — A+B hybrid (`direction-ab-hybrid.html`). Aisling approved this mockup. |
-| **Brand** | **Resona** · tagline *a private whisper* · appmark in `wisper/design/brand/` |
+| **Brand** | **Resona** · tagline *a private whisper* · appmark in `wisper/design/brand/` + `wisper/public/resona-appmark.svg` |
 | **Figma** | **Done (v1)** — [Resona — Visual Redesign (A+B Hybrid)](https://www.figma.com/design/L3F3rn5AKtB4n1TQ0OlTYm/Resona-Visual-Redesign-A-B-Hybrid). Page `Screens — A+B Hybrid`: frames `01 - Empty Hero`, `02 - Model Missing`, `03 - With Transcript`. Variables: `Resona / Deep Current` (12 colors). Rebuild scripts: `_figma_scripts/`. |
 | **HTML mockup** | **Canonical visual reference** — `wisper/design/mockups/direction-ab-hybrid.html` (open in browser; use tabs). |
-| **Phase A+B components** | **Written, not wired** — exist under `wisper/src/` but **`App.tsx` does not import them yet**. Running app still looks like old Wisper. |
-| **Component files (ready)** | `EmptyStateHero.tsx`, `AppHeader.tsx`, `UrlImportRow.tsx`, `ModelMissingPanel.tsx`, `ExportMenu.tsx`, `ResonaAppmark.tsx`, `tokens.css` |
-| **Branch** | Resona UI → `feature/resona-ui` (suggested). Feature slices → `Jimmy-Contributions` / `master`. Current working tree may be mixed/uncommitted — check `git status` before editing. |
-| **Merge gate** | **Not open** — do not import Resona components into `App.tsx` on feature branches until Aisling says **merge gate**. One commit must include `App.tsx` + all Resona imports + `tokens.css` + assets together. |
+| **Phase A+B components** | **Wired into `App.tsx`** on `feature/resona-ui` — `npm run build` green (2026-06-19). |
+| **Component files** | `EmptyStateHero.tsx`, `AppHeader.tsx`, `UrlImportRow.tsx`, `ModelMissingPanel.tsx`, `ExportMenu.tsx`, `ResonaAppmark.tsx`, `tokens.css`, `resona.css` |
+| **Branch** | **`feature/resona-ui`** — Resona UI slice. Feature slices → `Jimmy-Contributions` / `master`. |
+| **Merge gate** | **Open on this branch** — do not cherry-pick Resona imports onto feature branches without the full file set. Merge to `master` when Jimmy HEART sign-off done. |
 | **Phase C** | **Not started** — two-column library + transcript (≥800px); split Advanced (Setup vs Options). |
 | **Slice H** | **Deferred** — live dictation, partials, grammar, fillers, writing score (see `TODO.md`). |
 
@@ -22,7 +22,7 @@
 | Agent | Do this next | Do **not** |
 |-------|----------------|------------|
 | **Figma / design** | Polish Figma vs HTML mockup (real `resona-appmark.svg`, spacing, component variants). Update frames if mockup changes. | Touch `App.tsx` transcription/export logic. |
-| **Code / features** | Wait for **merge gate**, then wire Phase A+B on `feature/resona-ui` to match `direction-ab-hybrid.html`. Run `npm run build` after frontend changes. | Import Resona components from `Jimmy-Contributions` feature work until merge gate. Mix “Slice J + reskin” in one PR. |
+| **Code / features** | Phase A+B wired on `feature/resona-ui`. Run `npm run tauri dev` to review. Do not merge to `master` until Jimmy HEART sign-off. | Import Resona piecemeal onto other branches. |
 
 ### Paste-ready context (copy into a new chat)
 

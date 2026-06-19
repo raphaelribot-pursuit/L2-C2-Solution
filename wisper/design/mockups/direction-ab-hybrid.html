@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Resona — Direction A+B Hybrid (desktop)</title>
+<style>
+  /* A: Deep Current tokens on body + panels */
+  :root {
+    --bg: #04171C; --screen: #082530; --surface: #0E323E; --surface-alt: #0B2B36;
+    --hairline: #1C4350; --text: #EAF6F1; --muted: #9FB8B5;
+    --mint: #5FD3A0; --mint-bright: #7FE6B6; --teal: #57C6D6; --leaf: #3FB37E;
+    --on-mint: #062018; --sand: #E3C57F;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    background: #021014; color: var(--text); min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; padding: 28px 16px 48px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .frame-label { font-size: 13px; color: #7e9892; margin-bottom: 12px; text-align: center; max-width: 720px; line-height: 1.5; }
+  .window {
+    width: 960px; height: 720px; background: var(--bg); border-radius: 12px;
+    border: 1px solid #0a2830; box-shadow: 0 40px 100px -40px rgba(0,0,0,.75);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .titlebar {
+    height: 36px; background: var(--screen); border-bottom: 1px solid var(--hairline);
+    display: flex; align-items: center; padding: 0 14px; gap: 8px; flex-shrink: 0;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .titlebar span { margin-left: 8px; font-size: 12px; color: var(--muted); }
+
+  /* B: Living Surface gradient header — content stays on solid surfaces below */
+  .hero-header {
+    background: linear-gradient(165deg, #0B3A44 0%, #0E7C86 42%, #155E3E 88%);
+    padding: 18px 28px 0; flex-shrink: 0; position: relative;
+  }
+  .hero-header::after {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(127,230,182,.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-header > * { position: relative; z-index: 1; }
+  header.row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .appmark { width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0; }
+  .brand-text h1 { font-size: 26px; font-weight: 600; letter-spacing: -.02em; color: #fff; }
+  .brand-text h1 span { color: var(--mint-bright); }
+  .tagline { font-size: 12px; color: rgba(234,246,241,.78); letter-spacing: .02em; margin-top: 1px; }
+  .header-actions { display: flex; gap: 8px; }
+  .btn-ghost {
+    font: inherit; cursor: pointer; border: 1px solid rgba(255,255,255,.25);
+    background: rgba(255,255,255,.1); color: #fff; border-radius: 8px; padding: 8px 14px; font-size: 13px;
+  }
+  .steps {
+    font-size: 11px; font-weight: 600; color: rgba(255,255,255,.55);
+    text-transform: uppercase; letter-spacing: .08em; margin: 8px 0 10px;
+  }
+  .steps .on { color: var(--mint-bright); }
+  .wavewrap { display: flex; flex-direction: column; align-items: center; padding-bottom: 14px; }
+  .wave { display: flex; align-items: center; gap: 3px; height: 52px; }
+  .wave span { width: 4px; border-radius: 2px; background: rgba(191,239,214,.85); }
+  .wave-caption { font-size: 12px; color: rgba(255,255,255,.75); margin-top: 6px; }
+
+  .body-scroll { flex: 1; overflow: auto; padding: 0 24px 20px; }
+  .body-card {
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 16px 16px 14px 14px;
+    margin-top: -8px; padding: 20px 22px 22px; min-height: calc(100% + 8px);
+    box-shadow: 0 -4px 24px rgba(0,0,0,.2);
+  }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab {
+    font: inherit; cursor: pointer; border: 1px solid var(--hairline); background: var(--surface-alt);
+    color: var(--muted); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 600;
+  }
+  .tab.on { background: rgba(95,211,160,.15); color: var(--mint-bright); border-color: var(--mint); }
+  .state { display: none; } .state.on { display: block; }
+
+  .panel-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+  .privacy {
+    font-size: 13px; color: var(--muted); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 7px;
+  }
+
+  /* Jimmy full drop zone */
+  .hero-drop {
+    min-height: 200px; border: 2px dashed var(--hairline); border-radius: 14px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    padding: 24px; text-align: center; margin-bottom: 16px;
+    background: linear-gradient(180deg, rgba(95,211,160,.05) 0%, transparent 100%);
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .hero-drop:hover { border-color: var(--mint); box-shadow: inset 0 0 0 1px rgba(95,211,160,.2); }
+  .hero-drop h2 { font-size: 18px; font-weight: 600; }
+  .hero-drop p { font-size: 14px; color: var(--muted); max-width: 380px; line-height: 1.5; }
+  .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .btn {
+    font: inherit; cursor: pointer; border: 1px solid var(--hairline);
+    background: var(--surface-alt); color: var(--text); border-radius: 8px; padding: 9px 16px; font-size: 14px;
+  }
+  .btn.primary { background: var(--mint); color: var(--on-mint); border-color: var(--mint); font-weight: 600; }
+  .btn.record { border-color: var(--teal); color: var(--teal); background: rgba(87,198,214,.1); }
+
+  .url-block { margin-top: 4px; }
+  .url-block label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+  .url-row { display: flex; gap: 8px; }
+  .url-row input {
+    flex: 1; background: var(--surface-alt); border: 1px solid var(--hairline);
+    border-radius: 8px; padding: 10px 12px; color: var(--text); font: inherit; font-size: 14px;
+  }
+  .url-row input::placeholder { color: #6b7f7c; }
+  .advanced-link { margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .advanced-link button { background: none; border: none; color: var(--mint-bright); text-decoration: underline; cursor: pointer; font: inherit; padding: 0; }
+
+  .setup-panel {
+    background: linear-gradient(135deg, rgba(95,211,160,.14) 0%, rgba(87,198,214,.1) 100%);
+    border: 1px solid rgba(95,211,160,.4); border-radius: 14px; padding: 32px 24px; text-align: center;
+  }
+  .setup-panel .appmark-lg { width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 14px; }
+  .setup-panel h2 { font-size: 22px; margin-bottom: 8px; }
+  .setup-panel p { color: var(--muted); font-size: 15px; line-height: 1.55; max-width: 440px; margin: 0 auto 8px; }
+  .setup-panel .tiers { font-size: 13px; color: var(--mint-bright); margin-bottom: 20px; }
+
+  .layout-2col { display: grid; grid-template-columns: 220px 1fr; gap: 16px; }
+  .sub-panel { background: var(--surface-alt); border: 1px solid var(--hairline); border-radius: 12px; padding: 16px; }
+  .library-item { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--hairline); font-size: 13px; margin-bottom: 6px; }
+  .library-item.on { border-color: var(--mint); background: rgba(95,211,160,.08); }
+  .transcript-line { font-size: 16px; line-height: 1.65; margin-bottom: 12px; }
+  .time { font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; }
+
+  .legend { margin-top: 24px; max-width: 760px; text-align: center; }
+  .legend h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+  .legend p { font-size: 14px; color: #a9c3bd; line-height: 1.55; }
+  .legend .pick { margin-top: 10px; font-size: 13px; color: var(--mint-bright); font-weight: 600; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+  <p class="frame-label">
+    <strong>Direction A+B Hybrid</strong> — Deep Current tokens + Living Surface gradient header + leaf appmark from your brainstorm zip.<br>
+    Brand: <strong>Resona</strong> · tagline: <em>a private whisper</em> · 960×720 desktop · click tabs to compare states
+  </p>
+
+  <div class="window">
+    <div class="titlebar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span>Resona</span>
+    </div>
+
+    <div class="hero-header">
+      <header class="row">
+        <div class="brand">
+          <svg class="appmark" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0B3A44"/><stop offset="1" stop-color="#061A20"/></linearGradient>
+              <linearGradient id="leafg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7FE6B6"/><stop offset="1" stop-color="#3FB37E"/></linearGradient>
+            </defs>
+            <rect width="240" height="240" rx="54" fill="url(#bg)"/>
+            <g transform="translate(48,40) scale(4.5)">
+              <path d="M16 3 C23 9 25 19 16 29 C7 19 9 9 16 3 Z" fill="url(#leafg)"/>
+              <g stroke="#072019" stroke-width="1.5" stroke-linecap="round">
+                <line x1="11.5" y1="19" x2="11.5" y2="15"/><line x1="14" y1="21.5" x2="14" y2="12.5"/>
+                <line x1="16.5" y1="23" x2="16.5" y2="11"/><line x1="19" y1="21.5" x2="19" y2="12.5"/>
+                <line x1="21.5" y1="19" x2="21.5" y2="15"/>
+              </g>
+            </g>
+          </svg>
+          <div class="brand-text">
+            <h1>Resona<span>.</span></h1>
+            <p class="tagline">a private whisper</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn-ghost" type="button">About</button>
+          <button class="btn-ghost" type="button">Get started</button>
+        </div>
+      </header>
+      <p class="steps"><span class="on">Voice</span> › Text › Export</p>
+      <div class="wavewrap" aria-hidden="true">
+        <div class="wave">
+          <span style="height:10px"></span><span style="height:20px"></span><span style="height:34px"></span>
+          <span style="height:48px"></span><span style="height:52px"></span><span style="height:36px"></span>
+          <span style="height:44px"></span><span style="height:28px"></span><span style="height:50px"></span>
+          <span style="height:38px"></span><span style="height:22px"></span><span style="height:40px"></span>
+        </div>
+        <span class="wave-caption">Drop audio below or start recording</span>
+      </div>
+    </div>
+
+    <div class="body-scroll">
+      <div class="body-card">
+        <div class="tabs" role="tablist">
+          <button class="tab on" type="button" data-state="hero">Empty hero</button>
+          <button class="tab" type="button" data-state="model">Model missing</button>
+          <button class="tab" type="button" data-state="transcript">With transcript</button>
+        </div>
+
+        <div id="hero" class="state on">
+          <p class="panel-label">Transcribe</p>
+          <p class="privacy">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            On-device · nothing leaves your computer
+          </p>
+          <div class="hero-drop" role="button" tabindex="0">
+            <svg width="44" height="44" viewBox="0 0 48 48" fill="none" stroke="var(--mint)" stroke-width="1.5" aria-hidden="true">
+              <path d="M24 8v20M16 20l8 8 8-8"/><rect x="8" y="32" width="32" height="8" rx="2"/>
+            </svg>
+            <h2>Drop audio or video here</h2>
+            <p>Record, choose a file, or paste a URL — all transcription stays local.</p>
+            <div class="hero-actions">
+              <button class="btn record" type="button">● Record</button>
+              <button class="btn" type="button">Choose file</button>
+              <button class="btn primary" type="button">Transcribe</button>
+            </div>
+          </div>
+          <div class="url-block">
+            <label for="url-in">Import from URL</label>
+            <div class="url-row">
+              <input id="url-in" type="url" placeholder="https://www.youtube.com/watch?v=…" />
+              <button class="btn primary" type="button">Download &amp; transcribe</button>
+            </div>
+          </div>
+          <p class="advanced-link">
+            <button type="button">Advanced options</button> — language, GPU, model size
+          </p>
+        </div>
+
+        <div id="model" class="state">
+          <section class="setup-panel" role="status">
+            <svg class="appmark-lg" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <defs>
+                <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0B3A44"/><stop offset="1" stop-color="#061A20"/></linearGradient>
+                <linearGradient id="leafg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7FE6B6"/><stop offset="1" stop-color="#3FB37E"/></linearGradient>
+              </defs>
+              <rect width="240" height="240" rx="54" fill="url(#bg2)"/>
+              <g transform="translate(48,40) scale(4.5)">
+                <path d="M16 3 C23 9 25 19 16 29 C7 19 9 9 16 3 Z" fill="url(#leafg2)"/>
+                <g stroke="#072019" stroke-width="1.5" stroke-linecap="round">
+                  <line x1="16.5" y1="23" x2="16.5" y2="11"/>
+                  <line x1="14" y1="21.5" x2="14" y2="12.5"/><line x1="19" y1="21.5" x2="19" y2="12.5"/>
+                </g>
+              </g>
+            </svg>
+            <h2>One more step</h2>
+            <p>Resona needs a speech model before it can transcribe. We&apos;ll check your system and recommend the right size.</p>
+            <p class="tiers">Small (~75 MB) · Medium (~150 MB) · Large (~1.6 GB)</p>
+            <button class="btn primary" type="button" style="font-size:15px;padding:12px 28px">Open setup guide</button>
+          </section>
+        </div>
+
+        <div id="transcript" class="state">
+          <div class="layout-2col">
+            <aside class="sub-panel">
+              <p class="panel-label">Library</p>
+              <div class="library-item on">Meeting notes</div>
+              <div class="library-item">Lecture clip</div>
+            </aside>
+            <section class="sub-panel">
+              <p class="panel-label">Transcript</p>
+              <div class="transcript-line"><span class="time">0:00 – 0:04</span>So I think the proposal looks good.</div>
+              <div class="transcript-line"><span class="time">0:04 – 0:09</span>We should send it before Friday.</div>
+              <div class="hero-actions" style="margin-top:14px;justify-content:flex-start">
+                <button class="btn" type="button">Copy</button>
+                <button class="btn" type="button">Export ▾</button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <h2>A + B Hybrid — your pick</h2>
+    <p>Deep Current panel tokens (A) with Living Surface gradient + waveform header (B). Leaf appmark from <code>files.zip</code> / Resona brand. Jimmy full dashed drop zone, URL on main panel, full model-missing panel. Tagline draft: <em>a private whisper</em>.</p>
+    <p class="pick">Pending your OK before Phase A + B implementation.</p>
+  </div>
+
+  <script>
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+        document.querySelectorAll('.state').forEach(s => s.classList.remove('on'));
+        tab.classList.add('on');
+        document.getElementById(tab.dataset.state).classList.add('on');
+      });
+    });
+  </script>
+</body>
+</html>

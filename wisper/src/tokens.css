@@ -1,0 +1,25 @@
+/* Resona — Deep Current design tokens (A+B hybrid) */
+:root {
+  --bg: #04171c;
+  --screen: #082530;
+  --surface: #0e323e;
+  --surface-alt: #0b2b36;
+  --hairline: #1c4350;
+  --text: #eaf6f1;
+  --muted: #9fb8b5;
+  --mint: #5fd3a0;
+  --mint-bright: #7fe6b6;
+  --teal: #57c6d6;
+  --leaf: #3fb37e;
+  --on-mint: #062018;
+  --sand: #e3c57f;
+  --warn: #e3c57f;
+  --header-gradient: linear-gradient(165deg, #0b3a44 0%, #0e7c86 42%, #155e3e 88%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

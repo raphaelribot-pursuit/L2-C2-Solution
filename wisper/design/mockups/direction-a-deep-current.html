@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wisper — Direction A: Deep Current (desktop)</title>
+<style>
+  :root {
+    --bg: #04171C; --screen: #082530; --surface: #0E323E; --surface-alt: #0B2B36;
+    --hairline: #1C4350; --text: #EAF6F1; --muted: #9FB8B5;
+    --mint: #5FD3A0; --mint-bright: #7FE6B6; --teal: #57C6D6; --leaf: #3FB37E;
+    --on-mint: #062018; --sand: #E3C57F; --warn: #E3C57F;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    background: #021014; color: var(--text); min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; padding: 32px 16px 48px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .frame-label { font-size: 13px; color: #7e9892; margin-bottom: 12px; text-align: center; }
+  .window {
+    width: 960px; height: 720px; background: var(--bg); border-radius: 12px;
+    border: 1px solid #0a2830; box-shadow: 0 40px 100px -40px rgba(0,0,0,.75);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .titlebar {
+    height: 36px; background: var(--screen); border-bottom: 1px solid var(--hairline);
+    display: flex; align-items: center; padding: 0 14px; gap: 8px; flex-shrink: 0;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .titlebar span { margin-left: 8px; font-size: 12px; color: var(--muted); }
+  .app { flex: 1; overflow: auto; padding: 24px 28px 32px; max-width: 760px; margin: 0 auto; width: 100%; }
+  header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .brand h1 { font-size: 28px; font-weight: 600; letter-spacing: -.02em; }
+  .brand h1 span { color: var(--mint); }
+  .descriptor { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .header-actions { display: flex; gap: 8px; }
+  .btn {
+    font: inherit; cursor: pointer; border: 1px solid var(--hairline);
+    background: var(--surface-alt); color: var(--text); border-radius: 8px; padding: 8px 14px; font-size: 13px;
+  }
+  .btn.primary { background: var(--mint); color: var(--on-mint); border-color: var(--mint); font-weight: 600; }
+  .btn.record { background: #0d3d32; border-color: var(--teal); color: var(--teal); }
+  .btn.record:hover { background: #0f4a3d; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab {
+    font: inherit; cursor: pointer; border: 1px solid var(--hairline); background: var(--surface);
+    color: var(--muted); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 600;
+  }
+  .tab.on { background: rgba(95,211,160,.15); color: var(--mint-bright); border-color: var(--mint); }
+  .state { display: none; }
+  .state.on { display: block; }
+  .panel {
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px; padding: 20px;
+  }
+  .panel-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+  .privacy { font-size: 13px; color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 6px; }
+  /* Jimmy full drop zone */
+  .hero-drop {
+    min-height: 200px; border: 2px dashed var(--hairline); border-radius: 14px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    padding: 24px; text-align: center; margin-bottom: 16px;
+    background: linear-gradient(180deg, rgba(95,211,160,.04) 0%, transparent 100%);
+    transition: border-color .2s, background .2s;
+  }
+  .hero-drop:hover { border-color: var(--mint); background: rgba(95,211,160,.08); }
+  .hero-drop .icon { width: 48px; height: 48px; color: var(--mint); opacity: .9; }
+  .hero-drop h2 { font-size: 18px; font-weight: 600; }
+  .hero-drop p { font-size: 14px; color: var(--muted); max-width: 360px; line-height: 1.5; }
+  .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 4px; }
+  .url-row { display: flex; gap: 8px; margin-top: 4px; }
+  .url-row input {
+    flex: 1; background: var(--surface-alt); border: 1px solid var(--hairline);
+    border-radius: 8px; padding: 10px 12px; color: var(--text); font: inherit; font-size: 14px;
+  }
+  .url-row input::placeholder { color: #6b7f7c; }
+  .advanced-link { margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .advanced-link button { background: none; border: none; color: var(--mint-bright); text-decoration: underline; cursor: pointer; font: inherit; padding: 0; }
+  /* Model missing full panel */
+  .setup-panel {
+    background: linear-gradient(135deg, rgba(95,211,160,.12) 0%, rgba(87,198,214,.08) 100%);
+    border: 1px solid rgba(95,211,160,.35); border-radius: 14px; padding: 28px 24px; text-align: center;
+  }
+  .setup-panel h2 { font-size: 22px; margin-bottom: 8px; }
+  .setup-panel p { color: var(--muted); font-size: 15px; line-height: 1.55; max-width: 420px; margin: 0 auto 20px; }
+  .setup-panel .tiers { font-size: 13px; color: var(--mint-bright); margin-bottom: 16px; }
+  /* Transcript state */
+  .layout-2col { display: grid; grid-template-columns: 220px 1fr; gap: 16px; }
+  .library-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .library-list li {
+    padding: 10px 12px; border-radius: 8px; border: 1px solid var(--hairline);
+    background: var(--surface-alt); font-size: 13px; cursor: pointer;
+  }
+  .library-list li.active { border-color: var(--mint); background: rgba(95,211,160,.1); }
+  .library-meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .transcript { font-size: 16px; line-height: 1.65; }
+  .transcript .time { font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; }
+  .export-bar { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .legend { margin-top: 28px; max-width: 760px; text-align: center; }
+  .legend h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+  .legend p { font-size: 14px; color: #a9c3bd; line-height: 1.5; }
+  .legend .rec { margin-top: 10px; font-size: 13px; color: var(--mint-bright); font-weight: 600; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+  <p class="frame-label">960 × 720 desktop window · click tabs to compare states</p>
+  <div class="window">
+    <div class="titlebar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span>Wisper</span>
+    </div>
+    <div class="app">
+      <header>
+        <div class="brand">
+          <h1>Wisper<span>.</span></h1>
+          <p class="descriptor">private voice-to-text · local & offline</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn">About</button>
+          <button class="btn">Get started</button>
+        </div>
+      </header>
+
+      <div class="tabs" role="tablist">
+        <button class="tab on" data-state="hero">Empty hero</button>
+        <button class="tab" data-state="model">Model missing</button>
+        <button class="tab" data-state="transcript">With transcript</button>
+      </div>
+
+      <div id="hero" class="state on">
+        <section class="panel">
+          <p class="panel-title">Transcribe audio</p>
+          <p class="privacy">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            Transcription runs locally. No data leaves your computer.
+          </p>
+          <div class="hero-drop" role="button" tabindex="0" aria-label="Drop audio or video file">
+            <svg class="icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+              <path d="M24 8v20M16 20l8 8 8-8"/><rect x="8" y="32" width="32" height="8" rx="2"/>
+            </svg>
+            <h2>Drop audio or video here</h2>
+            <p>Or use the buttons below — everything stays on your device.</p>
+            <div class="hero-actions">
+              <button class="btn record">● Record</button>
+              <button class="btn">Choose file</button>
+              <button class="btn primary">Transcribe</button>
+            </div>
+          </div>
+          <div class="url-row">
+            <input type="url" placeholder="Paste YouTube or audio URL…" aria-label="Import from URL" />
+            <button class="btn primary">Download & transcribe</button>
+          </div>
+          <p class="advanced-link">
+            <button type="button">Advanced options</button> — language, GPU, model size
+          </p>
+        </section>
+      </div>
+
+      <div id="model" class="state">
+        <section class="setup-panel" role="status">
+          <h2>One more step</h2>
+          <p>Wisper needs a speech model before it can transcribe. We&apos;ll check your system and recommend the right size.</p>
+          <p class="tiers">Small (~75 MB) · Medium (~150 MB) · Large (~1.6 GB)</p>
+          <button class="btn primary" style="font-size:15px;padding:12px 28px">Open setup guide</button>
+        </section>
+        <section class="panel" style="margin-top:16px;opacity:.55;pointer-events:none">
+          <div class="hero-drop" style="min-height:120px;border-style:solid">
+            <p style="color:var(--muted)">Transcribe panel dimmed until model is ready</p>
+          </div>
+        </section>
+      </div>
+
+      <div id="transcript" class="state">
+        <div class="layout-2col">
+          <aside class="panel">
+            <p class="panel-title">Library</p>
+            <input type="search" placeholder="Search…" style="width:100%;margin-bottom:10px;background:var(--surface-alt);border:1px solid var(--hairline);border-radius:8px;padding:8px;color:inherit;font:inherit" />
+            <ul class="library-list">
+              <li class="active">Meeting notes<div class="library-meta">Today · 4:32</div></li>
+              <li>Lecture clip<div class="library-meta">Yesterday · 12:01</div></li>
+            </ul>
+          </aside>
+          <section class="panel">
+            <p class="panel-title">Transcript</p>
+            <div class="transcript">
+              <div><span class="time">0:00 – 0:04</span>So I think the proposal looks good.</div>
+              <div style="margin-top:12px"><span class="time">0:04 – 0:09</span>We should send it before Friday.</div>
+            </div>
+            <div class="export-bar">
+              <button class="btn">Copy</button>
+              <button class="btn">Export ▾</button>
+              <button class="btn" style="border-color:#8b3a3a;color:#f4a261">Delete</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <h2>Direction A — Deep Current</h2>
+    <p>Resona&apos;s locked dark palette on a desktop Wisper shell. Jimmy full dashed drop zone, URL on main panel, full model-missing panel, two-column library when transcript exists.</p>
+    <p class="rec">Recommended — matches your concept image without photographic backgrounds; WCAG AA safe.</p>
+  </div>
+
+  <script>
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+        document.querySelectorAll('.state').forEach(s => s.classList.remove('on'));
+        tab.classList.add('on');
+        document.getElementById(tab.dataset.state).classList.add('on');
+      });
+    });
+  </script>
+</body>
+</html>
