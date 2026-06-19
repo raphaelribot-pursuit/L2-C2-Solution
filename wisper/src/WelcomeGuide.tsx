@@ -22,6 +22,12 @@ interface YtDlpStatus {
   hint: string;
 }
 
+interface FfmpegStatus {
+  available: boolean;
+  path: string | null;
+  hint: string;
+}
+
 type GuideStep = "welcome" | "system" | "model" | "how" | "done";
 
 interface SystemProfile {
@@ -79,6 +85,11 @@ export function WelcomeGuide({
   const [ytDlpInstallProgress, setYtDlpInstallProgress] = useState<DownloadProgress | null>(
     null,
   );
+  const [ffmpegStatus, setFfmpegStatus] = useState<FfmpegStatus | null>(null);
+  const [ffmpegInstalling, setFfmpegInstalling] = useState(false);
+  const [ffmpegInstallProgress, setFfmpegInstallProgress] = useState<DownloadProgress | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!visible) return;
@@ -91,6 +102,9 @@ export function WelcomeGuide({
     setYtDlpStatus(null);
     setYtDlpInstalling(false);
     setYtDlpInstallProgress(null);
+    setFfmpegStatus(null);
+    setFfmpegInstalling(false);
+    setFfmpegInstallProgress(null);
   }, [visible]);
 
   useEffect(() => {
@@ -146,6 +160,9 @@ export function WelcomeGuide({
     invoke<YtDlpStatus>("get_yt_dlp_status")
       .then(setYtDlpStatus)
       .catch((e) => setError(String(e)));
+    invoke<FfmpegStatus>("get_ffmpeg_status")
+      .then(setFfmpegStatus)
+      .catch((e) => setError(String(e)));
   }, [visible, step]);
 
   useEffect(() => {
@@ -175,6 +192,34 @@ export function WelcomeGuide({
       void unlistenError.then((fn) => fn());
     };
   }, [visible, ytDlpInstalling]);
+
+  useEffect(() => {
+    if (!visible || !ffmpegInstalling) return;
+
+    const unlistenProgress = listen<DownloadProgress>(
+      "ffmpeg-install-progress",
+      (event) => {
+        setFfmpegInstallProgress(event.payload);
+      },
+    );
+    const unlistenComplete = listen<string>("ffmpeg-install-complete", async () => {
+      setFfmpegInstalling(false);
+      setFfmpegInstallProgress(null);
+      const status = await invoke<FfmpegStatus>("get_ffmpeg_status");
+      setFfmpegStatus(status);
+    });
+    const unlistenError = listen<string>("ffmpeg-install-error", (event) => {
+      setFfmpegInstalling(false);
+      setFfmpegInstallProgress(null);
+      setError(event.payload);
+    });
+
+    return () => {
+      void unlistenProgress.then((fn) => fn());
+      void unlistenComplete.then((fn) => fn());
+      void unlistenError.then((fn) => fn());
+    };
+  }, [visible, ffmpegInstalling]);
 
   if (!visible) return null;
 
@@ -253,6 +298,19 @@ export function WelcomeGuide({
     }
   }
 
+  async function startFfmpegInstall() {
+    setError(null);
+    setFfmpegInstalling(true);
+    setFfmpegInstallProgress({ percent: 0, status: "Starting download…" });
+    try {
+      await invoke("start_ffmpeg_install");
+    } catch (e) {
+      setFfmpegInstalling(false);
+      setFfmpegInstallProgress(null);
+      setError(String(e));
+    }
+  }
+
   function finish() {
     localStorage.setItem(GUIDE_COMPLETE_KEY, "1");
     onFinish();
@@ -261,6 +319,8 @@ export function WelcomeGuide({
   const progressPercent = downloadProgress?.percent ?? (downloading ? 2 : 0);
   const ytDlpProgressPercent =
     ytDlpInstallProgress?.percent ?? (ytDlpInstalling ? 2 : 0);
+  const ffmpegProgressPercent =
+    ffmpegInstallProgress?.percent ?? (ffmpegInstalling ? 2 : 0);
 
   return (
     <div className="guide-backdrop" role="presentation">
@@ -474,6 +534,44 @@ export function WelcomeGuide({
             )}
             {ytDlpStatus?.available && (
               <p className="hint">{ytDlpStatus.hint}</p>
+            )}
+            {!ffmpegStatus?.available && (
+              <div className="ytdlp-banner">
+                <p className="guide-note">
+                  Optional: install ffmpeg for reliable MP3 and video import, or skip and use WAV
+                  and recording only.
+                </p>
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={startFfmpegInstall}
+                  disabled={ffmpegInstalling}
+                >
+                  {ffmpegInstalling ? "Installing ffmpeg…" : "Install ffmpeg"}
+                </button>
+                {ffmpegInstalling && (
+                  <div className="guide-progress" aria-live="polite">
+                    <div
+                      className="progress-track"
+                      role="progressbar"
+                      aria-valuenow={ffmpegProgressPercent}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    >
+                      <div
+                        className="progress-fill download"
+                        style={{ width: `${Math.max(ffmpegProgressPercent, 2)}%` }}
+                      />
+                    </div>
+                    <p className="progress-meta">
+                      {ffmpegInstallProgress?.status ?? "Downloading…"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+            {ffmpegStatus?.available && (
+              <p className="hint">{ffmpegStatus.hint}</p>
             )}
             <p className="guide-note">
               Tip: drag an audio file onto the main window anytime.

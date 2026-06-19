@@ -127,6 +127,12 @@ interface YtDlpStatus {
   hint: string;
 }
 
+interface FfmpegStatus {
+  available: boolean;
+  path: string | null;
+  hint: string;
+}
+
 interface ModelStatus {
   path: string;
   models_dir: string;
@@ -286,6 +292,11 @@ function App() {
   const [ytDlpInstallProgress, setYtDlpInstallProgress] = useState<DownloadProgress | null>(
     null,
   );
+  const [ffmpegStatus, setFfmpegStatus] = useState<FfmpegStatus | null>(null);
+  const [ffmpegInstalling, setFfmpegInstalling] = useState(false);
+  const [ffmpegInstallProgress, setFfmpegInstallProgress] = useState<DownloadProgress | null>(
+    null,
+  );
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(
     null,
   );
@@ -315,6 +326,15 @@ function App() {
     try {
       const status = await invoke<YtDlpStatus>("get_yt_dlp_status");
       setYtDlpStatus(status);
+    } catch (e) {
+      setError(String(e));
+    }
+  }, []);
+
+  const refreshFfmpegStatus = useCallback(async () => {
+    try {
+      const status = await invoke<FfmpegStatus>("get_ffmpeg_status");
+      setFfmpegStatus(status);
     } catch (e) {
       setError(String(e));
     }
@@ -409,6 +429,9 @@ function App() {
     invoke<YtDlpStatus>("get_yt_dlp_status")
       .then(setYtDlpStatus)
       .catch((e) => setError(String(e)));
+    invoke<FfmpegStatus>("get_ffmpeg_status")
+      .then(setFfmpegStatus)
+      .catch((e) => setError(String(e)));
   }, []);
 
   useEffect(() => {
@@ -434,6 +457,30 @@ function App() {
       void unlistenError.then((fn) => fn());
     };
   }, [refreshYtDlpStatus]);
+
+  useEffect(() => {
+    const unlistenProgress = listen<DownloadProgress>("ffmpeg-install-progress", (event) => {
+      setFfmpegInstalling(true);
+      setFfmpegInstallProgress(event.payload);
+    });
+    const unlistenComplete = listen<string>("ffmpeg-install-complete", () => {
+      setFfmpegInstalling(false);
+      setFfmpegInstallProgress(null);
+      void refreshFfmpegStatus();
+      setStatus("ffmpeg is ready for MP3 and video decode.");
+    });
+    const unlistenError = listen<string>("ffmpeg-install-error", (event) => {
+      setFfmpegInstalling(false);
+      setFfmpegInstallProgress(null);
+      setError(event.payload);
+    });
+
+    return () => {
+      void unlistenProgress.then((fn) => fn());
+      void unlistenComplete.then((fn) => fn());
+      void unlistenError.then((fn) => fn());
+    };
+  }, [refreshFfmpegStatus]);
 
   useEffect(() => {
     let cancelled = false;
@@ -807,6 +854,19 @@ function App() {
     } catch (e) {
       setYtDlpInstalling(false);
       setYtDlpInstallProgress(null);
+      setError(String(e));
+    }
+  }
+
+  async function installFfmpeg() {
+    setError(null);
+    setFfmpegInstalling(true);
+    setFfmpegInstallProgress({ percent: 0, status: "Starting download…" });
+    try {
+      await invoke("start_ffmpeg_install");
+    } catch (e) {
+      setFfmpegInstalling(false);
+      setFfmpegInstallProgress(null);
       setError(String(e));
     }
   }
@@ -1351,6 +1411,47 @@ function App() {
                 )}
               </div>
             )}
+            <div className="ffmpeg-import">
+              <p className="field-label">MP3 / video decode</p>
+              {ffmpegStatus && ffmpegStatus.available && (
+                <p className="hint">{ffmpegStatus.hint}</p>
+              )}
+              {!ffmpegStatus?.available && (
+                <div className="ytdlp-banner">
+                  <p className="hint warn">
+                    {ffmpegStatus?.hint ??
+                      "Some MP3 and video files need ffmpeg for full-length decode. Install once below, or add ffmpeg to your PATH."}
+                  </p>
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={installFfmpeg}
+                    disabled={busy || isRecording || ffmpegInstalling}
+                  >
+                    {ffmpegInstalling ? "Installing ffmpeg…" : "Install ffmpeg"}
+                  </button>
+                  {ffmpegInstalling && ffmpegInstallProgress && (
+                    <div className="ytdlp-progress" aria-live="polite">
+                      <div
+                        className="progress-track"
+                        role="progressbar"
+                        aria-valuenow={ffmpegInstallProgress.percent ?? 2}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                      >
+                        <div
+                          className="progress-fill download"
+                          style={{
+                            width: `${Math.max(ffmpegInstallProgress.percent ?? 2, 2)}%`,
+                          }}
+                        />
+                      </div>
+                      <p className="progress-meta">{ffmpegInstallProgress.status}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

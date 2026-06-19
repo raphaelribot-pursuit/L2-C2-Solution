@@ -3,6 +3,7 @@ pub mod compute;
 pub mod engine;
 pub mod error;
 pub mod export;
+pub mod ffmpeg_tools;
 pub mod fetch;
 pub mod hardware;
 pub mod model;
@@ -28,6 +29,10 @@ pub use model::{
     resolve_model_path_for_tier, ModelStatus, StarterModel,
 };
 pub use audio::save_mic_wav;
+pub use ffmpeg_tools::{
+    download_ffmpeg, ffmpeg_install_filename, ffmpeg_status, resolve_ffmpeg, resolve_ffprobe,
+    set_ffmpeg_candidates, FfmpegStatus,
+};
 pub use fetch::{
     download_url, download_yt_dlp, normalize_url, resolve_yt_dlp, yt_dlp_install_filename,
     yt_dlp_release_download_url, yt_dlp_status, DownloadProgress, UrlDownloadResult, YtDlpStatus,

@@ -16,8 +16,9 @@ use wisper_core::{
     format_transcript_txt, format_transcript_vtt,
     get_system_profile, import_model_file, model_status_for_tier, recommend_model,
     resolve_model_path_for_tier, resolve_yt_dlp, run_compute_benchmark, transcribe_with_engine,
-    download_all_starter_models, download_yt_dlp, yt_dlp_status, AppAbout,
-    BenchmarkResult, ComputeBackend, ComputeInfo, DownloadProgress, ModelRecommendation,
+    download_all_starter_models, download_yt_dlp, download_ffmpeg, ffmpeg_status,
+    set_ffmpeg_candidates, yt_dlp_status, AppAbout,
+    BenchmarkResult, ComputeBackend, ComputeInfo, DownloadProgress, FfmpegStatus, ModelRecommendation,
     ModelStatus, StarterModel, GpuFallbackNotice, RecordingSource, RecordingSummary, Storage,
     is_model_file_valid,
     SystemProfile, TranscribeOptions, TranscriptSegment, TranscriptionProgress, WhisperEngine,
@@ -75,6 +76,17 @@ fn file_stem(path: &str) -> String {
 
 fn yt_dlp_candidates(app: &tauri::AppHandle) -> Vec<PathBuf> {
     let exe_name = if cfg!(windows) { "yt-dlp.exe" } else { "yt-dlp" };
+    let mut candidates = Vec::new();
+    if let Ok(resource) = app.path().resource_dir() {
+        candidates.push(resource.join("bin").join(exe_name));
+        candidates.push(resource.join(exe_name));
+    }
+    candidates.push(app_data_dir(app).join("bin").join(exe_name));
+    candidates
+}
+
+fn ffmpeg_candidates(app: &tauri::AppHandle) -> Vec<PathBuf> {
+    let exe_name = if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" };
     let mut candidates = Vec::new();
     if let Ok(resource) = app.path().resource_dir() {
         candidates.push(resource.join("bin").join(exe_name));
@@ -666,6 +678,34 @@ fn start_yt_dlp_install(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn get_ffmpeg_status(app: tauri::AppHandle) -> FfmpegStatus {
+    ffmpeg_status(&ffmpeg_candidates(&app))
+}
+
+#[tauri::command]
+fn start_ffmpeg_install(app: tauri::AppHandle) -> Result<(), String> {
+    let bin_dir = yt_dlp_bin_dir(&app);
+    let handle = app.clone();
+    thread::spawn(move || {
+        let result = download_ffmpeg(&bin_dir, |progress| {
+            let _ = handle.emit("ffmpeg-install-progress", progress);
+        });
+        match result {
+            Ok(path) => {
+                let _ = handle.emit(
+                    "ffmpeg-install-complete",
+                    path.to_string_lossy().into_owned(),
+                );
+            }
+            Err(err) => {
+                let _ = handle.emit("ffmpeg-install-error", err.to_string());
+            }
+        }
+    });
+    Ok(())
+}
+
+#[tauri::command]
 fn start_transcription(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
@@ -855,6 +895,7 @@ pub fn run() {
             std::fs::create_dir_all(models_dir(app.handle())).ok();
             std::fs::create_dir_all(audio_dir(app.handle())).ok();
             std::fs::create_dir_all(yt_dlp_bin_dir(app.handle())).ok();
+            set_ffmpeg_candidates(ffmpeg_candidates(app.handle()));
             let storage = Storage::open(&db_path(app.handle())).map_err(|e| e.to_string())?;
             app.manage(AppState {
                 storage: Mutex::new(storage),
@@ -894,6 +935,8 @@ pub fn run() {
             get_recording_status,
             get_yt_dlp_status,
             start_yt_dlp_install,
+            get_ffmpeg_status,
+            start_ffmpeg_install,
             start_transcription,
             start_url_import,
             cancel_transcription

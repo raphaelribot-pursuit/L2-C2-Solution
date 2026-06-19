@@ -58,6 +58,9 @@ jobs:
         run: npm ci
       - name: Build frontend
         run: npm run build
+      - name: Bundle yt-dlp for installer
+        shell: pwsh
+        run: ./scripts/download-yt-dlp-bundle.ps1
       - name: Build Tauri bundle (gpu-cuda)
         run: npm run tauri -- build -- --features gpu-cuda
       - name: Upload Windows bundle
@@ -92,6 +95,8 @@ jobs:
         run: npm ci
       - name: Build frontend
         run: npm run build
+      - name: Bundle yt-dlp for installer
+        run: bash scripts/download-yt-dlp-bundle.sh
       - name: Build Tauri bundle (gpu-vulkan)
         run: npm run tauri -- build -- --features gpu-vulkan
       - name: Upload Linux bundle
@@ -121,6 +126,8 @@ jobs:
         run: npm ci
       - name: Build frontend
         run: npm run build
+      - name: Bundle yt-dlp for installer
+        run: bash scripts/download-yt-dlp-bundle.sh
       - name: Prepare macOS DMG bundler
         run: |
           # Detach stale Wisper DMG mounts from prior failed runs on shared runners.
@@ -195,7 +202,7 @@ jobs:
 
             1. Pick the installer for your platform (NVIDIA → Windows CUDA, AMD/Intel GPU → Linux Vulkan, Mac → `_x64.dmg` on Intel Mac or `_aarch64.dmg` on Apple Silicon).
             2. Download a Whisper GGML model after install — models are not bundled. See `wisper/scripts/download-model.ps1` in the repo.
-            3. For YouTube/URL import, install [yt-dlp](https://github.com/yt-dlp/yt-dlp) separately.
-            4. For full-length MP3 import, install [ffmpeg](https://ffmpeg.org/) (symphonia can truncate some VBR MP3s; Wisper falls back to ffmpeg when installed).
+            3. **URL import:** installers include **yt-dlp**. You can also install or update it from **Advanced options → Install yt-dlp** (saved under app data).
+            4. **MP3 / video files:** install **ffmpeg** from **Advanced options → Install ffmpeg** for full-length decode when the built-in reader falls short (or use ffmpeg from your PATH).
 
             See the repo README — **Which build should I use?** — for which artifact matches your GPU.

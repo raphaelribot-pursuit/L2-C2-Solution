@@ -10,6 +10,7 @@ use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
 use crate::error::WisperError;
+use crate::ffmpeg_tools::{resolve_ffmpeg, resolve_ffprobe};
 
 pub(crate) const TARGET_SAMPLE_RATE: u32 = 16_000;
 
@@ -30,18 +31,13 @@ fn duration_ms_from_samples(sample_count: usize, sample_rate: u32) -> u64 {
 const TRUNCATION_THRESHOLD_MS: u64 = 10_000;
 
 fn ffmpeg_available() -> bool {
-    Command::new("ffmpeg")
-        .args(["-version"])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+    resolve_ffmpeg().is_ok()
 }
 
 fn ffprobe_duration_ms(path: &Path) -> Option<u64> {
     let path_str = path.to_str()?;
-    let output = Command::new("ffprobe")
+    let ffprobe = resolve_ffprobe()?;
+    let output = Command::new(&ffprobe)
         .args([
             "-v",
             "error",
@@ -66,8 +62,9 @@ fn decode_with_ffmpeg(path: &Path) -> Result<Vec<f32>, WisperError> {
     let path_str = path
         .to_str()
         .ok_or_else(|| WisperError::AudioDecode("non-UTF-8 path".into()))?;
+    let ffmpeg = resolve_ffmpeg()?;
 
-    let output = Command::new("ffmpeg")
+    let output = Command::new(&ffmpeg)
         .args([
             "-nostdin",
             "-hide_banner",
@@ -133,8 +130,8 @@ fn maybe_redecode_with_ffmpeg(path: &Path, loaded: LoadedAudio) -> Result<Loaded
 
     if !ffmpeg_available() {
         eprintln!(
-            "wisper: decode — symphonia truncated but ffmpeg not in PATH; \
-             install ffmpeg for full-length MP3 decode"
+            "wisper: decode — symphonia truncated but ffmpeg not available; \
+             install ffmpeg from Advanced options for full-length MP3 decode"
         );
         return Ok(loaded);
     }
@@ -487,23 +484,18 @@ mod tests {
         use std::process::Command;
         use uuid::Uuid;
 
-        let ffmpeg_ok = Command::new("ffmpeg")
-            .args(["-version"])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false);
+        let ffmpeg_ok = resolve_ffmpeg().is_ok();
         if !ffmpeg_ok {
-            eprintln!("skip mp4 decode test: ffmpeg not in PATH");
+            eprintln!("skip mp4 decode test: ffmpeg not available");
             return;
         }
+        let ffmpeg = resolve_ffmpeg().expect("checked above");
 
         let dir = std::env::temp_dir().join(format!("wisper-mp4-test-{}", Uuid::new_v4()));
         std::fs::create_dir_all(&dir).expect("temp dir");
         let mp4 = dir.join("tone.mp4");
 
-        let status = Command::new("ffmpeg")
+        let status = Command::new(&ffmpeg)
             .args([
                 "-nostdin",
                 "-y",

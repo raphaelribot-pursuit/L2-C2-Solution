@@ -98,9 +98,22 @@ Must pass: `cargo test` (wisper-core), `cargo check`, `npm run build`.
 - **F3** — Welcome guide + URL import install CTA when missing ✅
 - **F4** — Install button in Advanced URL import panel ✅
 - **F5** — Platform binaries: Win x64, Mac (`yt-dlp_macos`), Linux x64 ✅
-- **F6** — Bump version → **0.2.0-beta.23** + CHANGELOG (tag/CI when ready to ship)
+- **F6** — Bump version → **0.2.0-beta.23** + CHANGELOG (tag/CI when ready to ship) ✅
 
-**Out of scope:** bundle in installer, auto-update on launch, ffmpeg installer, cookies/auth, playlist UI, quality picker, proxy config.
+**Out of scope (Slice F):** auto-update on launch, ffmpeg installer, cookies/auth, playlist UI, quality picker, proxy config.
+
+---
+
+## Slice G — ffmpeg installer + bundled yt-dlp (`beta.24`)
+
+- **G1** — `download_ffmpeg` in wisper-core (BtbN zip/tar.xz → `app_data/bin/`) ✅
+- **G2** — `resolve_ffmpeg` / `resolve_ffprobe` + audio decode uses app binaries ✅
+- **G3** — Tauri `start_ffmpeg_install` + `get_ffmpeg_status` ✅
+- **G4** — Welcome guide + Advanced options install UI ✅
+- **G5** — Bundle yt-dlp in release installers (CI → `resources/bin/`) ✅
+- **G6** — Bump version → **0.2.0-beta.24** + CHANGELOG (tag/CI when ready to ship)
+
+**Out of scope (Slice G):** ffmpeg bundled without download, auto-update ffmpeg, ffplay UI, burn-in subs.
 
 ---
 

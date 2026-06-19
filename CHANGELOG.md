@@ -5,6 +5,15 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0-beta.24] - 2026-06-08
+
+### Added
+
+- **Install ffmpeg from the app** — one-click download of BtbN static builds into app data (`…/bin/ffmpeg` and `ffprobe`), with progress UI on the welcome guide and Advanced options. PATH-installed ffmpeg still works; decode now prefers bundled/app-data binaries for truncated MP3 retry.
+- **yt-dlp bundled in release installers** — CI downloads the official binary into app resources before packaging so URL import works out of the box on fresh installs.
+
+**Tag `v0.2.0-beta.24`** — ffmpeg installer + bundled yt-dlp. See [docs/SLICE-G-SCOPE.md](./docs/SLICE-G-SCOPE.md) for in/out of scope.
+
 ## [0.2.0-beta.23] - 2026-06-19
 
 ### Added

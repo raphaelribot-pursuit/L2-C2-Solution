@@ -1,6 +1,6 @@
 [package]
 name = "wisper-core"
-version = "0.2.0-beta.23"
+version = "0.2.0-beta.24"
 edition = "2021"
 description = "Local-first audio pipeline and whisper.cpp transcription for Wisper"
 
@@ -23,6 +23,9 @@ thiserror = "2"
 url = "2"
 uuid = { version = "1", features = ["v4"] }
 ureq = { version = "2.12", default-features = false, features = ["tls"] }
+zip = "2.2"
+tar = "0.4"
+xz2 = "0.1"
 sysinfo = "0.33"
 whisper-rs = { version = "0.16", default-features = false }
 
