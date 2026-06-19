@@ -29,4 +29,7 @@ pub enum WisperError {
 
     #[error("download failed: {0}")]
     Fetch(String),
+
+    #[error("export failed: {0}")]
+    Export(String),
 }

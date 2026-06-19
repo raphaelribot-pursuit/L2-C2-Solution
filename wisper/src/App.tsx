@@ -298,8 +298,22 @@ function App() {
   );
   const [urlJobActive, setUrlJobActive] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{
+    current: number;
+    total: number;
+  } | null>(null);
   const ytDlpAutoRefreshRef = useRef(false);
   const ffmpegAutoRefreshRef = useRef(false);
+  const importQueueRef = useRef<string[]>([]);
+  const batchMetaRef = useRef<{ current: number; total: number } | null>(null);
+  const continueImportQueueRef = useRef<() => void>(() => {});
+  const startImportBatchRef = useRef<(paths: string[]) => void>(() => {});
+
+  function clearImportQueue() {
+    importQueueRef.current = [];
+    batchMetaRef.current = null;
+    setBatchProgress(null);
+  }
 
   const refreshLibrary = useCallback(async () => {
     try {
@@ -532,16 +546,12 @@ function App() {
       } else if (payload.type === "drop") {
         setDragOver(false);
         if (busy || isRecording) return;
-        const path = payload.paths.find(isSupportedAudioPath);
-        if (!path) {
-          setError("Drop an audio or video file (wav, mp3, m4a, mp4, …).");
+        const paths = payload.paths.filter(isSupportedAudioPath);
+        if (paths.length === 0) {
+          setError("Drop audio or video files (wav, mp3, m4a, mp4, …).");
           return;
         }
-        setError(null);
-        setAudioPath(path);
-        setRecordingId(null);
-        setSegments([]);
-        setStatus(`Dropped: ${path.split(/[/\\]/).pop()}`);
+        startImportBatchRef.current(paths);
       }
     });
 
@@ -614,6 +624,11 @@ function App() {
         }
         await refreshLibrary();
         setLibraryQuery("");
+        if (importQueueRef.current.length > 0) {
+          continueImportQueueRef.current();
+        } else {
+          clearImportQueue();
+        }
       },
     );
 
@@ -627,11 +642,18 @@ function App() {
         setFallbackNotice(null);
         const isDownload = event.payload.phase === "download";
         if (event.payload.cancelled) {
+          clearImportQueue();
           setStatus(isDownload ? "Download cancelled." : "Transcription cancelled.");
           setError(null);
         } else {
           setError(event.payload.message);
           setStatus(isDownload ? "Download failed." : "Transcription failed.");
+          if (!isDownload && importQueueRef.current.length > 0) {
+            setStatus(
+              `File failed — continuing with ${importQueueRef.current.length} remaining…`,
+            );
+            continueImportQueueRef.current();
+          }
         }
       },
     );
@@ -782,7 +804,7 @@ function App() {
   async function pickFile() {
     setError(null);
     const selected = await open({
-      multiple: false,
+      multiple: true,
       filters: [
         {
           name: "Audio",
@@ -791,12 +813,9 @@ function App() {
       ],
     });
 
-    if (selected && typeof selected === "string") {
-      setAudioPath(selected);
-      setRecordingId(null);
-      setSegments([]);
-      setStatus(`Selected: ${selected.split(/[/\\]/).pop()}`);
-    }
+    if (!selected) return;
+    const paths = Array.isArray(selected) ? selected : [selected];
+    startImportBatchRef.current(paths);
   }
 
   async function loadRecording(id: string, title: string) {
@@ -823,7 +842,12 @@ function App() {
 
   async function transcribeFromPath(
     path: string,
-    options?: { source?: "mic" | "import" | "url"; title?: string; sourceUrl?: string },
+    options?: {
+      source?: "mic" | "import" | "url";
+      title?: string;
+      sourceUrl?: string;
+      batch?: { current: number; total: number };
+    },
   ) {
     if (!modelStatus?.ready) {
       setError("Speech model not installed yet.");
@@ -842,7 +866,11 @@ function App() {
       computeBackend === "gpu" && computeInfo?.gpu_backend
         ? computeInfo.gpu_backend
         : "CPU";
-    setStatus(`Transcribing on ${deviceLabel} (no network)…`);
+    const fileName = path.split(/[/\\]/).pop() ?? path;
+    const batchLabel = options?.batch
+      ? ` (${options.batch.current} of ${options.batch.total}: ${fileName})`
+      : "";
+    setStatus(`Transcribing${batchLabel} on ${deviceLabel} (no network)…`);
     setSegments([]);
 
     try {
@@ -861,6 +889,61 @@ function App() {
       setStatus("Could not start transcription.");
     }
   }
+
+  function startImportBatch(paths: string[]) {
+    const files = paths.filter(isSupportedAudioPath);
+    if (files.length === 0) {
+      setError("No supported audio or video files in selection.");
+      return;
+    }
+    setError(null);
+    if (files.length === 1) {
+      clearImportQueue();
+      setAudioPath(files[0]);
+      setRecordingId(null);
+      setSegments([]);
+      setStatus(`Selected: ${files[0].split(/[/\\]/).pop()}`);
+      return;
+    }
+    const [first, ...rest] = files;
+    importQueueRef.current = rest;
+    const batch = { current: 1, total: files.length };
+    batchMetaRef.current = batch;
+    setBatchProgress(batch);
+    setAudioPath(first);
+    setRecordingId(null);
+    setSegments([]);
+    void transcribeFromPath(first, {
+      source: "import",
+      batch,
+    });
+  }
+
+  function continueImportQueue() {
+    if (importQueueRef.current.length === 0) {
+      clearImportQueue();
+      return;
+    }
+    const prev = batchMetaRef.current;
+    if (!prev) {
+      clearImportQueue();
+      return;
+    }
+    const next = importQueueRef.current.shift()!;
+    const batch = { current: prev.current + 1, total: prev.total };
+    batchMetaRef.current = batch;
+    setBatchProgress(batch);
+    setRecordingId(null);
+    setSegments([]);
+    setAudioPath(next);
+    void transcribeFromPath(next, {
+      source: "import",
+      batch,
+    });
+  }
+
+  startImportBatchRef.current = startImportBatch;
+  continueImportQueueRef.current = continueImportQueue;
 
   async function installYtDlp() {
     setError(null);
@@ -930,6 +1013,7 @@ function App() {
       setError("Select an audio file first.");
       return;
     }
+    clearImportQueue();
     await transcribeFromPath(audioPath, { source: "import" });
   }
 
@@ -969,6 +1053,7 @@ function App() {
   }
 
   async function cancelTranscription() {
+    clearImportQueue();
     try {
       await invoke("cancel_transcription");
       setStatus("Cancelling…");
@@ -1008,20 +1093,8 @@ function App() {
     }
   }
 
-  async function exportTranscriptTxt() {
-    await exportTranscriptFile("txt", "export_transcript_txt", "save_transcript_txt_file");
-  }
-
-  async function exportTranscriptSrt() {
-    await exportTranscriptFile("srt", "export_transcript_srt", "save_transcript_srt_file");
-  }
-
-  async function exportTranscriptVtt() {
-    await exportTranscriptFile("vtt", "export_transcript_vtt", "save_transcript_vtt_file");
-  }
-
   async function exportTranscriptFile(
-    ext: "txt" | "srt" | "vtt",
+    ext: "txt" | "srt" | "vtt" | "json" | "csv",
     exportCommand: string,
     saveCommand: string,
   ) {
@@ -1039,6 +1112,84 @@ function App() {
     } catch (e) {
       setError(String(e));
       setStatus(`Could not export ${ext.toUpperCase()}.`);
+    }
+  }
+
+  async function exportTranscriptBinary(
+    ext: string,
+    label: string,
+    exportCommand: string,
+    saveCommand: string,
+  ) {
+    if (!recordingId) return;
+    setError(null);
+    try {
+      const bytes = await invoke<number[]>(exportCommand, { recordingId });
+      const path = await invoke<string | null>(saveCommand, {
+        contents: bytes,
+        defaultFilename: `${safeExportFilename(activeTitle ?? "transcript")}.${ext}`,
+      });
+      if (path) {
+        setStatus(`Exported ${path.split(/[/\\]/).pop()}.`);
+      }
+    } catch (e) {
+      setError(String(e));
+      setStatus(`Could not export ${label}.`);
+    }
+  }
+
+  async function exportTranscriptTxt() {
+    await exportTranscriptFile("txt", "export_transcript_txt", "save_transcript_txt_file");
+  }
+
+  async function exportTranscriptSrt() {
+    await exportTranscriptFile("srt", "export_transcript_srt", "save_transcript_srt_file");
+  }
+
+  async function exportTranscriptVtt() {
+    await exportTranscriptFile("vtt", "export_transcript_vtt", "save_transcript_vtt_file");
+  }
+
+  async function exportTranscriptJson() {
+    await exportTranscriptFile("json", "export_transcript_json", "save_transcript_json_file");
+  }
+
+  async function exportTranscriptCsv() {
+    await exportTranscriptFile("csv", "export_transcript_csv", "save_transcript_csv_file");
+  }
+
+  async function exportTranscriptDocx() {
+    await exportTranscriptBinary("docx", "Word", "export_transcript_docx", "save_transcript_docx_file");
+  }
+
+  async function exportTranscriptPdf() {
+    await exportTranscriptBinary("pdf", "PDF", "export_transcript_pdf", "save_transcript_pdf_file");
+  }
+
+  async function exportTranscriptZip() {
+    await exportTranscriptBinary("zip", "ZIP bundle", "export_transcript_bundle", "save_transcript_bundle_file");
+  }
+
+  async function exportLibraryZip() {
+    if (library.length === 0) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const recordingIds = library.map((item) => item.id);
+      const bytes = await invoke<number[]>("export_library_bundle", { recordingIds });
+      const stamp = new Date().toISOString().slice(0, 10);
+      const path = await invoke<string | null>("save_library_bundle_file", {
+        contents: bytes,
+        defaultFilename: `wisper-library-${stamp}.zip`,
+      });
+      if (path) {
+        setStatus(`Exported ${library.length} recording${library.length === 1 ? "" : "s"} to ${path.split(/[/\\]/).pop()}.`);
+      }
+    } catch (e) {
+      setError(String(e));
+      setStatus("Could not export library.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -1312,8 +1463,13 @@ function App() {
           </div>
         )}
         <p className="drop-hint">
-          Drop an audio or video file here, or use the buttons below.
+          Drop one or more audio or video files here, or use the buttons below.
         </p>
+        {batchProgress && (
+          <p className="hint batch-queue" role="status">
+            Import queue: file {batchProgress.current} of {batchProgress.total}
+          </p>
+        )}
         {audioPath && isVideoPath(audioPath) && (
           <p className="hint warn">
             That looks like video — Wisper will extract audio for transcription. For
@@ -1341,7 +1497,7 @@ function App() {
             </button>
           )}
           <button type="button" onClick={pickFile} disabled={busy || isRecording}>
-            Choose audio file
+            Choose audio file(s)
           </button>
           <button
             type="button"
@@ -1749,7 +1905,14 @@ function App() {
 
       {(library.length > 0 || libraryQuery.trim()) && (
         <section className="panel library">
-          <h2 className="panel-title">Library</h2>
+          <div className="library-header">
+            <h2 className="panel-title">Library</h2>
+            {library.length > 0 && (
+              <button type="button" onClick={exportLibraryZip} disabled={busy}>
+                Export all (ZIP)
+              </button>
+            )}
+          </div>
           <input
             type="search"
             className="library-search"
@@ -1807,6 +1970,21 @@ function App() {
                 </button>
                 <button type="button" onClick={exportTranscriptVtt} disabled={busy}>
                   Export VTT
+                </button>
+                <button type="button" onClick={exportTranscriptJson} disabled={busy}>
+                  JSON
+                </button>
+                <button type="button" onClick={exportTranscriptCsv} disabled={busy}>
+                  CSV
+                </button>
+                <button type="button" onClick={exportTranscriptDocx} disabled={busy}>
+                  Word
+                </button>
+                <button type="button" onClick={exportTranscriptPdf} disabled={busy}>
+                  PDF
+                </button>
+                <button type="button" onClick={exportTranscriptZip} disabled={busy}>
+                  ZIP
                 </button>
                 <button
                   type="button"

@@ -1,6 +1,6 @@
 [package]
 name = "wisper"
-version = "0.2.0-beta.25"
+version = "0.2.0-beta.27"
 description = "Privacy-first local transcription — Wisper desktop app"
 authors = ["Aisling Leiva", "Jimmy Ong"]
 edition = "2021"

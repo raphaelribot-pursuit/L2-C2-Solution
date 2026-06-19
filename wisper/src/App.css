@@ -775,6 +775,10 @@ button.primary:disabled.disabled-muted {
   color: #9aa0a6;
 }
 
+.hint.batch-queue {
+  color: #8ab4f8;
+}
+
 .hint a {
   color: #8ab4f8;
 }
@@ -827,6 +831,18 @@ button.primary:disabled.disabled-muted {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+}
+
+.library-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.library-header .panel-title {
+  margin: 0;
 }
 
 .library-search {

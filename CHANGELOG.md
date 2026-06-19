@@ -5,6 +5,25 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0-beta.27] - 2026-06-08
+
+### Added
+
+- **Batch import queue** — select or drop multiple audio/video files; Wisper transcribes them sequentially and saves each to the library. Cancel clears the queue. A failed file shows an error and the queue continues.
+
+**Tag `v0.2.0-beta.27`** — batch import. See [docs/SLICE-J-SCOPE.md](./docs/SLICE-J-SCOPE.md) for in/out of scope.
+
+## [0.2.0-beta.26] - 2026-06-08
+
+### Added
+
+- **JSON and CSV export** — structured transcript export alongside TXT, SRT, and VTT.
+- **Word and PDF export** — local document generation with no cloud upload.
+- **ZIP bundle** — one download with every format for a single transcript.
+- **Library batch ZIP** — export all recordings shown in the library (respects search) into one archive.
+
+**Tag `v0.2.0-beta.26`** — Export++. See [docs/SLICE-I-SCOPE.md](./docs/SLICE-I-SCOPE.md) for in/out of scope.
+
 ## [0.2.0-beta.25] - 2026-06-08
 
 ### Added

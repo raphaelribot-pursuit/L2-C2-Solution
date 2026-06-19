@@ -1,5 +1,13 @@
 use crate::transcribe::TranscriptSegment;
 
+mod bundle;
+mod docx;
+mod pdf;
+
+pub use bundle::{build_library_bundle, build_transcript_bundle, TranscriptExportSet};
+pub use docx::format_transcript_docx;
+pub use pdf::format_transcript_pdf;
+
 fn format_timestamp_hms(ms: i64) -> (u64, u64, u64, u64) {
     let ms = ms.max(0) as u64;
     let hours = ms / 3_600_000;
@@ -93,6 +101,68 @@ pub fn format_transcript_vtt(segments: &[TranscriptSegment]) -> String {
     lines.join("\n")
 }
 
+#[derive(serde::Serialize)]
+struct TranscriptJsonExport<'a> {
+    title: &'a str,
+    segments: &'a [TranscriptSegment],
+}
+
+/// JSON export: title plus segment array with millisecond timestamps.
+pub fn format_transcript_json(title: &str, segments: &[TranscriptSegment]) -> String {
+    let payload = TranscriptJsonExport { title, segments };
+    serde_json::to_string_pretty(&payload).unwrap_or_else(|_| "{}".into())
+}
+
+fn csv_cell(value: &str) -> String {
+    if value.contains(',') || value.contains('"') || value.contains('\n') || value.contains('\r')
+    {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_string()
+    }
+}
+
+/// CSV export: `start_ms,end_ms,text` header plus one row per non-empty segment.
+pub fn format_transcript_csv(segments: &[TranscriptSegment]) -> String {
+    let mut lines = vec!["start_ms,end_ms,text".to_string()];
+    for seg in segments {
+        let text = seg.text.trim();
+        if text.is_empty() {
+            continue;
+        }
+        lines.push(format!(
+            "{},{},{}",
+            seg.start_ms,
+            seg.end_ms,
+            csv_cell(text)
+        ));
+    }
+    lines.join("\n")
+}
+
+/// Safe folder name inside a ZIP export (no path separators or reserved characters).
+pub fn sanitize_export_folder_name(title: &str) -> String {
+    let cleaned: String = title
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == ' ' || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    let trimmed = cleaned.trim();
+    let truncated: String = trimmed.chars().take(60).collect();
+    let collapsed = truncated.split_whitespace().collect::<Vec<_>>().join(" ");
+    let trimmed_underscores = collapsed.trim_matches('_');
+    if trimmed_underscores.is_empty() {
+        "transcript".to_string()
+    } else {
+        trimmed_underscores.to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -147,5 +217,26 @@ mod tests {
         };
         let text = format_transcript_srt(&[seg]);
         assert!(text.contains("01:01:01,500 --> 01:01:02,000"));
+    }
+
+    #[test]
+    fn json_includes_title_and_segments() {
+        let seg = sample_segment();
+        let json = format_transcript_json("Demo", &[seg]);
+        assert!(json.contains("\"title\": \"Demo\""));
+        assert!(json.contains("\"start_ms\": 0"));
+        assert!(json.contains("Hello"));
+    }
+
+    #[test]
+    fn csv_has_header_and_row() {
+        let csv = format_transcript_csv(&[sample_segment()]);
+        assert!(csv.starts_with("start_ms,end_ms,text"));
+        assert!(csv.contains("0,1500,Hello"));
+    }
+
+    #[test]
+    fn sanitize_export_folder_name_strips_bad_chars() {
+        assert_eq!(sanitize_export_folder_name("  My:File?  "), "My_File");
     }
 }

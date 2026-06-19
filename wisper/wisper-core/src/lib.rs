@@ -19,7 +19,11 @@ pub use compute::{
 };
 pub use engine::WhisperEngine;
 pub use error::WisperError;
-pub use export::{format_transcript_srt, format_transcript_txt, format_transcript_vtt};
+pub use export::{
+    build_library_bundle, build_transcript_bundle, format_transcript_csv, format_transcript_docx,
+    format_transcript_json, format_transcript_pdf, format_transcript_srt, format_transcript_txt,
+    format_transcript_vtt, sanitize_export_folder_name, TranscriptExportSet,
+};
 pub use hardware::{
     get_system_profile, recommend_model, run_compute_benchmark, BenchmarkResult,
     ModelRecommendation, SystemProfile,

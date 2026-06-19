@@ -1,4 +1,4 @@
-# Wisper — TODO (beta.25 feature gates)
+# Wisper — TODO (beta.27 feature gates)
 
 Last updated: 2026-06-08  
 **Branch:** `master` (infra slices E–G); Slice UX **pending OK**  
@@ -131,9 +131,31 @@ Must pass: `cargo test` (wisper-core), `cargo check`, `npm run build`.
 
 ---
 
-## Slice I — Export++ (`beta.26+`, planned)
+## Slice I — Export++ (`beta.26`)
 
-- batch/zip export, JSON/CSV, Word/PDF (see roadmap)
+**Scope doc:** `docs/SLICE-I-SCOPE.md`
+
+- **I1** — `format_transcript_json` + `format_transcript_csv` in wisper-core ✅
+- **I2** — `format_transcript_docx` + `format_transcript_pdf` (local generation) ✅
+- **I3** — `build_transcript_bundle` ZIP (txt, srt, vtt, json, csv, docx, pdf) ✅
+- **I4** — `build_library_bundle` + Tauri commands + UI ✅
+- **I5** — Bump version → **0.2.0-beta.26** + CHANGELOG (tag/CI when ready to ship)
+
+**Out of scope:** batch import queue, burn-in subs, diarization, word-level timing.
+
+---
+
+## Slice J — Batch import queue (`beta.27`)
+
+**Scope doc:** `docs/SLICE-J-SCOPE.md`
+
+- **J1** — Multi-select file picker + multi-file drag-and-drop ✅
+- **J2** — Sequential import queue (same language/model/GPU per job) ✅
+- **J3** — Queue progress UI + cancel clears queue ✅
+- **J4** — Continue queue after per-file failure ✅
+- **J5** — Bump version → **0.2.0-beta.27** + CHANGELOG (tag/CI when ready to ship)
+
+**Out of scope:** parallel jobs, ZIP/folder import, playlist URLs, Resona UI.
 
 ---
 
@@ -145,28 +167,27 @@ Must pass: `cargo test` (wisper-core), `cargo check`, `npm run build`.
 
 ---
 
-## Slice UX — Resona visual redesign (**pending Aisling OK**)
+## Slice UX — Resona visual redesign (**approved — Phase A + B shipped in working tree**)
 
 **Planning doc:** `docs/RESONA-VISUAL-REDESIGN.md`  
 **Mockup:** `wisper/design/mockups/direction-ab-hybrid.html` (A + B hybrid)  
-**Brand assets:** `wisper/design/brand/` (from Resona + `Downloads/files.zip`)
-
-**Do not start until explicit OK after mockup review.**
+**Brand assets:** `wisper/design/brand/` (enhanced appmark)
 
 ### Phase A — Structure
 
-- [ ] **UX-A1** — Extract `EmptyStateHero.tsx` (Jimmy full dashed drop zone ~200px)
-- [ ] **UX-A2** — URL import row on main transcribe panel
-- [ ] **UX-A3** — Model-missing: full panel only; remove duplicate inline `model-banner`
-- [ ] **UX-A4** — Export dropdown (TXT / SRT / VTT)
-- [ ] **UX-A5** — Add `tokens.css` (Resona Deep Current)
+- [x] **UX-A1** — Extract `EmptyStateHero.tsx` (Jimmy full dashed drop zone ~200px)
+- [x] **UX-A2** — URL import row on main transcribe panel
+- [x] **UX-A3** — Model-missing: full panel only; remove duplicate inline `model-banner`
+- [x] **UX-A4** — Export dropdown (TXT / SRT / VTT)
+- [x] **UX-A5** — Add `tokens.css` (Resona Deep Current)
 
 ### Phase B — Visual reskin + rebrand
 
-- [ ] **UX-B1** — Hybrid layout: gradient header + waveform + solid content card
-- [ ] **UX-B2** — Resona header: appmark + “Resona.” + tagline *a private whisper*
-- [ ] **UX-B3** — Reskin `App.css` / welcome guide to tokens
-- [ ] **UX-B4** — About / window title → Resona (package rename = separate task if needed)
+- [x] **UX-B1** — Hybrid layout: gradient header + waveform + solid content card
+- [x] **UX-B2** — Resona header: appmark + “Resona.” + tagline *a private whisper*
+- [x] **UX-B3** — Reskin `App.css` / welcome guide to tokens
+- [x] **UX-B4** — About / window title → Resona (Tauri `productName`; package id unchanged)
+- [x] **UX-B5** — Enhanced appmark SVG (gradient leaf + wave bars + ring glow)
 
 ### Phase C — Layout (after A + B)
 

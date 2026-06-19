@@ -12,8 +12,9 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use uuid::Uuid;
 use wisper_core::{
-    app_about, compute_info, download_starter_model, download_url, format_transcript_srt,
-    format_transcript_txt, format_transcript_vtt,
+    app_about, build_library_bundle, build_transcript_bundle, compute_info, download_starter_model,
+    download_url, format_transcript_csv, format_transcript_docx, format_transcript_json,
+    format_transcript_pdf, format_transcript_srt, format_transcript_txt, format_transcript_vtt,
     get_system_profile, import_model_file, model_status_for_tier, recommend_model,
     resolve_model_path_for_tier, resolve_yt_dlp, run_compute_benchmark, transcribe_with_engine,
     download_all_starter_models, download_yt_dlp, download_ffmpeg, ffmpeg_status,
@@ -21,7 +22,7 @@ use wisper_core::{
     set_ffmpeg_candidates, yt_dlp_install_filename, yt_dlp_status, AppAbout,
     BenchmarkResult, ComputeBackend, ComputeInfo, DownloadProgress, FfmpegStatus, ModelRecommendation,
     ModelStatus, StarterModel, GpuFallbackNotice, RecordingSource, RecordingSummary, Storage,
-    is_model_file_valid,
+    is_model_file_valid, TranscriptExportSet,
     SystemProfile, TranscribeOptions, TranscriptSegment, TranscriptionProgress, WhisperEngine,
     WisperError, YtDlpStatus, UpdateCheckResult, check_for_update,
 };
@@ -475,6 +476,30 @@ enum ExportFormat {
     Txt,
     Srt,
     Vtt,
+    Json,
+    Csv,
+}
+
+fn recording_title_for_export(
+    storage: &Storage,
+    recording_id: &str,
+) -> Result<String, String> {
+    storage
+        .list_recordings()
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .find(|r| r.id == recording_id)
+        .map(|r| r.title)
+        .ok_or_else(|| format!("recording not found: {recording_id}"))
+}
+
+fn segments_for_recording(
+    storage: &Storage,
+    recording_id: &str,
+) -> Result<Vec<TranscriptSegment>, String> {
+    storage
+        .get_segments(recording_id)
+        .map_err(|e| e.to_string())
 }
 
 fn export_transcript_for_format(
@@ -483,14 +508,87 @@ fn export_transcript_for_format(
     format: ExportFormat,
 ) -> Result<String, String> {
     let storage = state.storage.lock().map_err(|e| e.to_string())?;
-    let segments = storage
-        .get_segments(&recording_id)
-        .map_err(|e| e.to_string())?;
+    let title = recording_title_for_export(&storage, &recording_id)?;
+    let segments = segments_for_recording(&storage, &recording_id)?;
     Ok(match format {
         ExportFormat::Txt => format_transcript_txt(&segments),
         ExportFormat::Srt => format_transcript_srt(&segments),
         ExportFormat::Vtt => format_transcript_vtt(&segments),
+        ExportFormat::Json => format_transcript_json(&title, &segments),
+        ExportFormat::Csv => format_transcript_csv(&segments),
     })
+}
+
+#[tauri::command]
+fn export_transcript_json(
+    state: tauri::State<'_, AppState>,
+    recording_id: String,
+) -> Result<String, String> {
+    export_transcript_for_format(state, recording_id, ExportFormat::Json)
+}
+
+#[tauri::command]
+fn export_transcript_csv(
+    state: tauri::State<'_, AppState>,
+    recording_id: String,
+) -> Result<String, String> {
+    export_transcript_for_format(state, recording_id, ExportFormat::Csv)
+}
+
+#[tauri::command]
+fn export_transcript_docx(
+    state: tauri::State<'_, AppState>,
+    recording_id: String,
+) -> Result<Vec<u8>, String> {
+    let storage = state.storage.lock().map_err(|e| e.to_string())?;
+    let title = recording_title_for_export(&storage, &recording_id)?;
+    let segments = segments_for_recording(&storage, &recording_id)?;
+    format_transcript_docx(&segments, &title).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn export_transcript_pdf(
+    state: tauri::State<'_, AppState>,
+    recording_id: String,
+) -> Result<Vec<u8>, String> {
+    let storage = state.storage.lock().map_err(|e| e.to_string())?;
+    let title = recording_title_for_export(&storage, &recording_id)?;
+    let segments = segments_for_recording(&storage, &recording_id)?;
+    format_transcript_pdf(&segments, &title).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn export_transcript_bundle(
+    state: tauri::State<'_, AppState>,
+    recording_id: String,
+) -> Result<Vec<u8>, String> {
+    let storage = state.storage.lock().map_err(|e| e.to_string())?;
+    let title = recording_title_for_export(&storage, &recording_id)?;
+    let segments = segments_for_recording(&storage, &recording_id)?;
+    build_transcript_bundle(&title, &segments).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn export_library_bundle(
+    state: tauri::State<'_, AppState>,
+    recording_ids: Vec<String>,
+) -> Result<Vec<u8>, String> {
+    let storage = state.storage.lock().map_err(|e| e.to_string())?;
+    let summaries: Vec<RecordingSummary> = storage.list_recordings().map_err(|e| e.to_string())?;
+    let mut exports = Vec::new();
+    for id in recording_ids {
+        let title = summaries
+            .iter()
+            .find(|r| r.id == id)
+            .map(|r| r.title.clone())
+            .ok_or_else(|| format!("recording not found: {id}"))?;
+        let segments = segments_for_recording(&storage, &id)?;
+        exports.push(TranscriptExportSet {
+            folder_name: title,
+            segments,
+        });
+    }
+    build_library_bundle(&exports).map_err(|e| e.to_string())
 }
 
 fn save_transcript_with_dialog(
@@ -567,6 +665,131 @@ async fn save_transcript_vtt_file(
         "Export subtitles (WebVTT)",
         "WebVTT",
         &["vtt"],
+    )
+}
+
+fn save_transcript_bytes_file(
+    app: tauri::AppHandle,
+    contents: Vec<u8>,
+    default_filename: String,
+    title: &str,
+    filter_label: &str,
+    extensions: &[&str],
+) -> Result<Option<String>, String> {
+    let mut dialog = app
+        .dialog()
+        .file()
+        .set_title(title)
+        .set_file_name(default_filename);
+    for ext in extensions {
+        dialog = dialog.add_filter(filter_label, &[ext]);
+    }
+    let picked = dialog.blocking_save_file();
+
+    let Some(picked) = picked else {
+        return Ok(None);
+    };
+
+    let path = picked
+        .into_path()
+        .map_err(|e| format!("invalid save path: {e}"))?;
+    std::fs::write(&path, contents).map_err(|e| e.to_string())?;
+    Ok(Some(path.to_string_lossy().into_owned()))
+}
+
+#[tauri::command]
+async fn save_transcript_json_file(
+    app: tauri::AppHandle,
+    contents: String,
+    default_filename: String,
+) -> Result<Option<String>, String> {
+    save_transcript_with_dialog(
+        app,
+        contents,
+        default_filename,
+        "Export transcript (JSON)",
+        "JSON",
+        &["json"],
+    )
+}
+
+#[tauri::command]
+async fn save_transcript_csv_file(
+    app: tauri::AppHandle,
+    contents: String,
+    default_filename: String,
+) -> Result<Option<String>, String> {
+    save_transcript_with_dialog(
+        app,
+        contents,
+        default_filename,
+        "Export transcript (CSV)",
+        "CSV",
+        &["csv"],
+    )
+}
+
+#[tauri::command]
+async fn save_transcript_docx_file(
+    app: tauri::AppHandle,
+    contents: Vec<u8>,
+    default_filename: String,
+) -> Result<Option<String>, String> {
+    save_transcript_bytes_file(
+        app,
+        contents,
+        default_filename,
+        "Export transcript (Word)",
+        "Word",
+        &["docx"],
+    )
+}
+
+#[tauri::command]
+async fn save_transcript_pdf_file(
+    app: tauri::AppHandle,
+    contents: Vec<u8>,
+    default_filename: String,
+) -> Result<Option<String>, String> {
+    save_transcript_bytes_file(
+        app,
+        contents,
+        default_filename,
+        "Export transcript (PDF)",
+        "PDF",
+        &["pdf"],
+    )
+}
+
+#[tauri::command]
+async fn save_transcript_bundle_file(
+    app: tauri::AppHandle,
+    contents: Vec<u8>,
+    default_filename: String,
+) -> Result<Option<String>, String> {
+    save_transcript_bytes_file(
+        app,
+        contents,
+        default_filename,
+        "Export transcript bundle",
+        "ZIP",
+        &["zip"],
+    )
+}
+
+#[tauri::command]
+async fn save_library_bundle_file(
+    app: tauri::AppHandle,
+    contents: Vec<u8>,
+    default_filename: String,
+) -> Result<Option<String>, String> {
+    save_transcript_bytes_file(
+        app,
+        contents,
+        default_filename,
+        "Export library",
+        "ZIP",
+        &["zip"],
     )
 }
 
@@ -988,9 +1211,21 @@ pub fn run() {
             export_transcript_txt,
             export_transcript_srt,
             export_transcript_vtt,
+            export_transcript_json,
+            export_transcript_csv,
+            export_transcript_docx,
+            export_transcript_pdf,
+            export_transcript_bundle,
+            export_library_bundle,
             save_transcript_txt_file,
             save_transcript_srt_file,
             save_transcript_vtt_file,
+            save_transcript_json_file,
+            save_transcript_csv_file,
+            save_transcript_docx_file,
+            save_transcript_pdf_file,
+            save_transcript_bundle_file,
+            save_library_bundle_file,
             start_recording,
             stop_recording,
             get_recording_status,
