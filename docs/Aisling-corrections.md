@@ -52,11 +52,11 @@ Each item: **Jimmy PRD says** → **Aisling correction** → **Severity**
 
 | #   | Issue                                                     | Aisling correction                                                                                                                                                                                                                                                                  |
 | --- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| C6  | Pin Advanced persists in config file                      | **Option B accepted:** checkbox *“Keep Advanced options open on this computer”* → `localStorage` (`wisper-keep-advanced-open`). No pin icon for beta. Option C (Tauri prefs file) **deferred**. |
+| C6  | Pin Advanced persists in config file                      | **Option B accepted:** checkbox *“Keep Advanced options open on this computer”* → `localStorage` (`wisper-keep-advanced-open`). No pin icon for beta. Option C (Tauri prefs file) **deferred**.                                                                                     |
 | C7  | File paths `~/.config/wisper` on Windows                  | **Use Tauri app data dir** (already used for models, DB, audio in `src-tauri/src/lib.rs`). Document actual paths in PRD footnote.                                                                                                                                                   |
 | C8  | GPU fallback “pauses at checkpoint”                       | **Already corrected in Jimmy’s final PRD.** Keep: “restarts on CPU from beginning.” Matches current `fallbackNotice` UX in `App.tsx`.                                                                                                                                               |
 | C9  | File size “1 GB ≈ 6 hours” vs table showing 18h @ 128kbps | **Reject hard caps (Aisling decision).** Wisper is a local app — do **not** enforce upload, URL, recording, or model download size limits in the UI. Jimmy’s hour estimates are documentation-only if kept at all. Optional: warn on very large files (informational), never block. |
-| C16 | Model download is fixed to `base` in welcome guide        | **Add user-facing model tier selector:** Small / Medium / Large (labels **confirmed**). Pair with **hardware advisor** (C17) — suggest tier, user can override. |
+| C16 | Model download is fixed to `base` in welcome guide        | **Add user-facing model tier selector:** Small / Medium / Large (labels **confirmed**). Pair with **hardware advisor** (C17) — suggest tier, user can override.                                                                                                                     |
 
 
 ### 1.3 UX model: one coherent first-run story
@@ -123,20 +123,24 @@ Jimmy’s PRD focused on hero layout; Aisling’s answer on “hero layout” is
 
 Users should not guess Small vs Large. Add a **System check** step in welcome guide (and link from Advanced options).
 
-| Layer | What it does | Implementation sketch |
-|-------|----------------|----------------------|
-| **Spec reader** | Shows CPU arch, RAM, GPU backend (Metal/CUDA/Vulkan), disk free on models dir | Extend Rust: `sysinfo` (or Tauri plugins) → new `get_system_profile` command; merge with existing `get_compute_info` |
-| **Micro-benchmark** (optional but recommended) | 5–15 s smoke: load **tiny** model, transcribe bundled 3–5 s WAV, report sec/audio-sec | New `run_compute_benchmark` in `wisper-core`; progress events like model download |
-| **Recommendation** | Map profile + benchmark to Small / Medium / Large + CPU vs GPU default | Rule table in Rust (testable); UI: *“Recommended for your Mac: Medium + Metal”* with **Use recommended** / **Choose myself** |
+
+| Layer                                          | What it does                                                                          | Implementation sketch                                                                                                        |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Spec reader**                                | Shows CPU arch, RAM, GPU backend (Metal/CUDA/Vulkan), disk free on models dir         | Extend Rust: `sysinfo` (or Tauri plugins) → new `get_system_profile` command; merge with existing `get_compute_info`         |
+| **Micro-benchmark** (optional but recommended) | 5–15 s smoke: load **tiny** model, transcribe bundled 3–5 s WAV, report sec/audio-sec | New `run_compute_benchmark` in `wisper-core`; progress events like model download                                            |
+| **Recommendation**                             | Map profile + benchmark to Small / Medium / Large + CPU vs GPU default                | Rule table in Rust (testable); UI: *“Recommended for your Mac: Medium + Metal”* with **Use recommended** / **Choose myself** |
+
 
 **Rules of thumb (initial, tune with Jimmy data):**
 
-| Profile | Suggested model | Suggested backend |
-|---------|-----------------|-----------------|
-| RAM &lt; 8 GB, no GPU build | Small | CPU |
-| RAM 8–16 GB, GPU available | Medium | GPU (with CPU fallback) |
-| RAM ≥ 16 GB, GPU available, benchmark fast | Large | GPU |
-| Intel Mac x64, 8 GB RAM | Small or Medium | CPU often safer |
+
+| Profile                                    | Suggested model | Suggested backend       |
+| ------------------------------------------ | --------------- | ----------------------- |
+| RAM < 8 GB, no GPU build                   | Small           | CPU                     |
+| RAM 8–16 GB, GPU available                 | Medium          | GPU (with CPU fallback) |
+| RAM ≥ 16 GB, GPU available, benchmark fast | Large           | GPU                     |
+| Intel Mac x64, 8 GB RAM                    | Small or Medium | CPU often safer         |
+
 
 **Privacy:** All local; benchmark runs on device; no telemetry upload in beta (results only in UI + optional export for support).
 
@@ -235,7 +239,7 @@ Users should not guess Small vs Large. Add a **System check** step in welcome gu
 | B6   | C16 model tier selector         | `<select>` or radio in `WelcomeGuide` + Advanced: Small / Medium / Large with size labels; pass choice to `start_model_download`. Extend `StarterModel` in `wisper-core/src/model.rs` for `large-turbo`.                              |
 | B7   | C12 Advanced options label      | Rename “Advanced settings” → “Advanced options” in `App.tsx`.                                                                                                                                                                         |
 | B8   | C6 remember-open (Option B)     | Checkbox in Advanced: *Keep open on this computer* → `wisper-keep-advanced-open` in `localStorage`; expand on launch if true.                                                                                                         |
-| B9   | C17 hardware advisor            | Welcome step **Check your system** → spec summary → optional **Run quick test** → pre-select tier + CPU/GPU. Commands: `get_system_profile`, `run_compute_benchmark`.                                                               |
+| B9   | C17 hardware advisor            | Welcome step **Check your system** → spec summary → optional **Run quick test** → pre-select tier + CPU/GPU. Commands: `get_system_profile`, `run_compute_benchmark`.                                                                 |
 
 
 **Primary files:**
@@ -284,12 +288,25 @@ Users should not guess Small vs Large. Add a **System check** step in welcome gu
 
 | Item                            | Reason to defer                                  |
 | ------------------------------- | ------------------------------------------------ |
-| `EmptyStateHero.tsx` extract    | Refactor only; no user gain until layout changes |
+| `EmptyStateHero.tsx` extract    | **→ Slice UX** ([RESONA-VISUAL-REDESIGN.md](./RESONA-VISUAL-REDESIGN.md)) — pending OK |
 | `preferences.json` + pin        | localStorage sufficient for 2 testers            |
 | Analytics events                | No backend                                       |
 | Language confidence banner      | Needs backend signal                             |
-| Figma-first gate                | Use beta.18 screenshots                          |
+| Figma-first gate                | Use mockups in `wisper/design/mockups/`          |
 | Re-transcribe with new language | P2 feature                                       |
+
+### Slice H — Resona polish layer (deferred, post Slice UX)
+
+From original Resona app. **Not** in visual redesign slice.
+
+| Item | Resona source |
+| ---- | ------------- |
+| Live streaming dictation + partial transcripts | `streaming.rs`, `vad.rs` |
+| Grammar review | `src/lib/grammar.ts` |
+| Filler word removal | grammar + UI |
+| Writing score | review metrics in Resona `App.tsx` |
+
+See [ROADMAP.md](../ROADMAP.md) Slice H, [TODO.md](../TODO.md) Slice H.
 
 
 ---
@@ -308,10 +325,10 @@ Users should not guess Small vs Large. Add a **System check** step in welcome gu
 
 ### Phase 0 — Decisions locked
 
-- [x] Aisling: Pin **B**, model labels, HEART direction, no file caps
-- [ ] Jimmy: HEART metrics sign-off (Section 5)
-- [ ] Create branch `Jimmy-Contributions` on GitHub
-- [x] **Go:** Slice A → B → C
+- Aisling: Pin **B**, model labels, HEART direction, no file caps
+- Jimmy: HEART metrics sign-off (Section 5)
+- Create branch `Jimmy-Contributions` on GitHub
+- **Go:** Slice A → B → C
 
 ### Phase 1 — Partner beta stable (current → +1 week)
 
@@ -343,15 +360,15 @@ Users should not guess Small vs Large. Add a **System check** step in welcome gu
 ### Phase 3 — HEART-guided UI/UX → beta.19 (+1–2 weeks)
 
 
-| Milestone | Deliverable | HEART |
-| --------- | ----------- | ----- |
-| P3.1 | Privacy subtitle + model banner + **model tier selector** | Task Success |
-| P3.2 | **Hardware advisor** (spec reader + micro-benchmark + recommendation) | Task Success, Adoption |
-| P3.3 | Advanced options + remember-open + disabled-state pass | Task Success |
-| P3.4 | Release CI green; Jimmy gets `_x64.dmg` | Adoption |
+| Milestone | Deliverable                                                           | HEART                  |
+| --------- | --------------------------------------------------------------------- | ---------------------- |
+| P3.1      | Privacy subtitle + model banner + **model tier selector**             | Task Success           |
+| P3.2      | **Hardware advisor** (spec reader + micro-benchmark + recommendation) | Task Success, Adoption |
+| P3.3      | Advanced options + remember-open + disabled-state pass                | Task Success           |
+| P3.4      | Release CI green; Jimmy gets `_x64.dmg`                               | Adoption               |
 
 
-**Exit:** Cold install → system check → model downloaded → transcription **started** in &lt;5 min. Jimmy clarity test (&lt;10s) still applies.
+**Exit:** Cold install → system check → model downloaded → transcription **started** in <5 min. Jimmy clarity test (<10s) still applies.
 
 ### Phase 4 — A11y & format hints → beta.20 (+1 week)
 
@@ -367,16 +384,17 @@ Users should not guess Small vs Large. Add a **System check** step in welcome gu
 
 ### Phase 5 — HEART measurement & Week 3 (ongoing)
 
-| Track | Items | HEART |
-|-------|--------|-------|
+
+| Track       | Items                                                                               | HEART                   |
+| ----------- | ----------------------------------------------------------------------------------- | ----------------------- |
 | Measurement | Partner survey (5 bullets) + log TTFT locally (optional JSON in app data, no cloud) | Happiness, Task Success |
-| Product | yt-dlp in-app installer | Task Success |
-| Product | EmptyStateHero refactor if clarity test still fails | Task Success |
-| Product | Full analytics / PostHog only if cohort &gt; ~10 | Engagement, Retention |
-| Infra | Windows Vulkan Desktop CI flake (non-blocking) | — |
+| Product     | yt-dlp in-app installer                                                             | Task Success            |
+| Product     | EmptyStateHero refactor if clarity test still fails                                 | Task Success            |
+| Product     | Full analytics / PostHog only if cohort > ~10                                       | Engagement, Retention   |
+| Infra       | Windows Vulkan Desktop CI flake (non-blocking)                                      | —                       |
+
 
 **Remove from Phase 5:** “Analytics only if cohort > 10” stays; Jimmy’s 13-event suite stays deferred until HEART metrics prove which signals matter.
-
 
 ```mermaid
 gantt
@@ -391,6 +409,8 @@ gantt
     beta.20 a11y polish           :2026-07-02, 7d
 ```
 
+
+
 ---
 
 ## 5. HEART framework — Wisper UX north star
@@ -401,59 +421,69 @@ Wisper is a **local desktop beta** with a tiny cohort (you + Jimmy). We **focus 
 
 ### 5.1 Focus categories
 
-| Priority | Category | Why for Wisper now |
-|----------|----------|-------------------|
-| **P0** | **Task Success** | Core job: get audio in → transcript out without errors or confusion |
-| **P0** | **Adoption** | Beta goal: installers used, welcome guide finished, model downloaded |
-| P1 | **Happiness** | Partner trust (privacy, “this feels easy”) via short survey |
-| P2 | Engagement | Library reuse, multiple files — nice to have |
-| P2 | Retention | Return usage — premature until public launch |
+
+| Priority | Category         | Why for Wisper now                                                   |
+| -------- | ---------------- | -------------------------------------------------------------------- |
+| **P0**   | **Task Success** | Core job: get audio in → transcript out without errors or confusion  |
+| **P0**   | **Adoption**     | Beta goal: installers used, welcome guide finished, model downloaded |
+| P1       | **Happiness**    | Partner trust (privacy, “this feels easy”) via short survey          |
+| P2       | Engagement       | Library reuse, multiple files — nice to have                         |
+| P2       | Retention        | Return usage — premature until public launch                         |
+
 
 ### 5.2 Goals → Signals → Metrics (Wisper beta)
 
 #### Task Success
 
-| Goals | Signals | Metrics (how we measure in beta) |
-|-------|---------|----------------------------------|
-| User completes first transcription | Guide completed; model ready; transcribe clicked; segments saved | **Activation rate** = % installs that **start** transcribe (Jimmy PRD aligned) |
-| User picks appropriate model for hardware | System check run; recommendation accepted vs overridden | **Recommendation acceptance %** |
-| Low friction path | Time from app open → first transcribe start | **TTFT** (time to first transcribe) — stopwatch in moderated test |
-| Few blocking errors | GPU fallback, download fail, format issues | **Error rate** per session (manual QA log) |
+
+| Goals                                     | Signals                                                          | Metrics (how we measure in beta)                                               |
+| ----------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| User completes first transcription        | Guide completed; model ready; transcribe clicked; segments saved | **Activation rate** = % installs that **start** transcribe (Jimmy PRD aligned) |
+| User picks appropriate model for hardware | System check run; recommendation accepted vs overridden          | **Recommendation acceptance %**                                                |
+| Low friction path                         | Time from app open → first transcribe start                      | **TTFT** (time to first transcribe) — stopwatch in moderated test              |
+| Few blocking errors                       | GPU fallback, download fail, format issues                       | **Error rate** per session (manual QA log)                                     |
+
 
 **UI/UX implications:** Hardware advisor, clear Record/Choose file, visible status during download/benchmark, no arbitrary file caps blocking real workloads.
 
 #### Adoption
 
-| Goals | Signals | Metrics |
-|-------|---------|---------|
-| Testers install and activate | DMG/exe opened; welcome guide seen | Install → guide start % |
-| Model setup completes | Download finished | Model ready % |
-| Users discover GPU path | Advanced opened; GPU selected | GPU adoption % (partner notes) |
+
+| Goals                        | Signals                            | Metrics                        |
+| ---------------------------- | ---------------------------------- | ------------------------------ |
+| Testers install and activate | DMG/exe opened; welcome guide seen | Install → guide start %        |
+| Model setup completes        | Download finished                  | Model ready %                  |
+| Users discover GPU path      | Advanced opened; GPU selected      | GPU adoption % (partner notes) |
+
 
 **UI/UX implications:** Welcome guide stays modal first-run; system check is a **positive** step (not a gate); update check in About (already shipped beta.17).
 
 #### Happiness (lightweight)
 
-| Goals | Signals | Metrics |
-|-------|---------|---------|
-| Users feel safe and capable | Privacy subtitle; local-only copy | 5-question partner survey after beta.19 |
-| Perceived ease | Moderated “explain the app in 10s” | Pass/fail clarity test |
+
+| Goals                       | Signals                            | Metrics                                 |
+| --------------------------- | ---------------------------------- | --------------------------------------- |
+| Users feel safe and capable | Privacy subtitle; local-only copy  | 5-question partner survey after beta.19 |
+| Perceived ease              | Moderated “explain the app in 10s” | Pass/fail clarity test                  |
+
 
 **No NPS pipeline in app yet** — survey in doc/email is enough for beta.
 
 #### Engagement & Retention (defer)
 
-Track locally later: sessions per week, library item count, return after 7 days — only when user base &gt; ~10.
+Track locally later: sessions per week, library item count, return after 7 days — only when user base > ~10.
 
 ### 5.3 HEART → implementation mapping
 
-| HEART metric | Feature in roadmap |
-|--------------|-------------------|
-| TTFT / activation | Welcome guide + hardware advisor + model tier (Slice B) |
-| Recommendation acceptance | Pre-select tier from benchmark; track override in QA notes |
-| Clarity / happiness | Privacy subtitle, disabled-state hints, Advanced remember-open |
-| Adoption | beta.19 installers + guide completion |
-| Error rate | GPU fallback UX (existing), format hints (Slice C), no silent failures |
+
+| HEART metric              | Feature in roadmap                                                     |
+| ------------------------- | ---------------------------------------------------------------------- |
+| TTFT / activation         | Welcome guide + hardware advisor + model tier (Slice B)                |
+| Recommendation acceptance | Pre-select tier from benchmark; track override in QA notes             |
+| Clarity / happiness       | Privacy subtitle, disabled-state hints, Advanced remember-open         |
+| Adoption                  | beta.19 installers + guide completion                                  |
+| Error rate                | GPU fallback UX (existing), format hints (Slice C), no silent failures |
+
 
 ### 5.4 What HEART does *not* mean for Wisper
 
@@ -468,22 +498,22 @@ Track locally later: sessions per week, library item count, return after 7 days 
 ## Appendix A: Decision log
 
 
-| ID  | Decision                                                                                           | Status                                               |
-| --- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| D1  | Jimmy PRD is input, not implementation checklist                                                   | **Accepted**                                         |
-| D2  | Tauri app data dir for durable files; localStorage for UI session prefs                            | **Accepted**                                         |
-| D3  | Welcome guide remains primary first-run; inline banner only when guide completed but model missing | **Accepted**                                         |
-| D4  | Analytics deferred                                                                                 | **Accepted**                                         |
-| D5  | Activation metric = transcription **started**                                                      | **Accepted** (aligns with Jimmy final PRD)           |
-| D6  | Figma not blocking beta.19                                                                         | **Accepted** — revisit for public launch             |
-| D7  | UI label: **Advanced options** (not “Advanced settings”)                                           | **Accepted**                                         |
-| D8  | No file size limits (upload, URL, recording, model)                                                | **Accepted**                                         |
-| D9  | Model tier selector: Small / Medium / Large                                                        | **Accepted**                                         |
-| D10 | Docs on branch `Jimmy-Contributions`; merge later                                                  | **Accepted**                                         |
-| D11 | Pin Advanced: **Option B** (remember-open checkbox, localStorage) | **Accepted** |
-| D12 | Model labels Small / Medium / Large | **Accepted** |
-| D13 | Hardware spec reader + micro-benchmark → model recommendation | **Accepted** |
-| D14 | HEART framework guides beta.19–20 UI/UX (focus: Task Success + Adoption) | **Accepted** |
+| ID  | Decision                                                                                           | Status                                     |
+| --- | -------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| D1  | Jimmy PRD is input, not implementation checklist                                                   | **Accepted**                               |
+| D2  | Tauri app data dir for durable files; localStorage for UI session prefs                            | **Accepted**                               |
+| D3  | Welcome guide remains primary first-run; inline banner only when guide completed but model missing | **Accepted**                               |
+| D4  | Analytics deferred                                                                                 | **Accepted**                               |
+| D5  | Activation metric = transcription **started**                                                      | **Accepted** (aligns with Jimmy final PRD) |
+| D6  | Figma not blocking beta.19                                                                         | **Accepted** — revisit for public launch   |
+| D7  | UI label: **Advanced options** (not “Advanced settings”)                                           | **Accepted**                               |
+| D8  | No file size limits (upload, URL, recording, model)                                                | **Accepted**                               |
+| D9  | Model tier selector: Small / Medium / Large                                                        | **Accepted**                               |
+| D10 | Docs on branch `Jimmy-Contributions`; merge later                                                  | **Accepted**                               |
+| D11 | Pin Advanced: **Option B** (remember-open checkbox, localStorage)                                  | **Accepted**                               |
+| D12 | Model labels Small / Medium / Large                                                                | **Accepted**                               |
+| D13 | Hardware spec reader + micro-benchmark → model recommendation                                      | **Accepted**                               |
+| D14 | HEART framework guides beta.19–20 UI/UX (focus: Task Success + Adoption)                           | **Accepted**                               |
 
 
 ## Appendix B: Decisions + Pin Advanced explained

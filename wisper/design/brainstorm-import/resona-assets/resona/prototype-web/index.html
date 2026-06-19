@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#13110d" />
+<title>Resona — local voice to text</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Spectral:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#13110d; --ink-2:#1c1913; --panel:#211d16; --line:#37301f;
+    --paper:#e9e0cb; --paper-dim:#b6ac95; --muted:#857c63;
+    --gold:#c79a3e; --gold-soft:#e2c074; --rust:#b4623a; --green:#7e9461;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:"Spectral",Georgia,serif; color:var(--paper);
+    background:
+      radial-gradient(900px 500px at 85% -10%, rgba(199,154,62,.10), transparent 60%),
+      radial-gradient(700px 600px at -10% 110%, rgba(180,98,58,.08), transparent 55%),
+      var(--ink);
+    -webkit-font-smoothing:antialiased; line-height:1.55;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; opacity:.04; z-index:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .wrap{position:relative; z-index:1; max-width:840px; margin:0 auto; padding:34px 22px 80px}
+  header{display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:6px}
+  h1{font-family:"Fraunces",serif; font-weight:600; font-size:clamp(30px,6vw,46px); letter-spacing:-.01em; margin:0; line-height:1}
+  h1 .dot{color:var(--gold)}
+  .tag{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted)}
+  .lede{color:var(--paper-dim); font-size:15px; max-width:60ch; margin:14px 0 26px; font-style:italic}
+
+  .tabs{display:flex; gap:6px; background:var(--ink-2); border:1px solid var(--line); padding:5px; border-radius:999px; width:max-content; margin-bottom:18px}
+  .tab{font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--paper-dim); background:none; border:0; padding:9px 18px; border-radius:999px; cursor:pointer; transition:.18s}
+  .tab[aria-selected="true"]{background:var(--gold); color:#1a1509; font-weight:500}
+
+  .panel{background:linear-gradient(180deg,var(--panel),var(--ink-2)); border:1px solid var(--line); border-radius:var(--radius); padding:22px; box-shadow:0 24px 60px -40px #000}
+  .controls{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:18px}
+  .field{display:flex; flex-direction:column; gap:6px}
+  label{font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+  select{appearance:none; background:var(--ink); color:var(--paper); border:1px solid var(--line); border-radius:9px; padding:9px 30px 9px 12px; font-family:"Spectral",serif; font-size:14px; cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23857c63' stroke-width='1.6'%3E%3Cpath d='M3 5l3 3 3-3'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 11px center}
+
+  .btn{font-family:"IBM Plex Mono",monospace; font-size:13px; letter-spacing:.04em; border:1px solid var(--gold); background:var(--gold); color:#1a1509; padding:12px 22px; border-radius:10px; cursor:pointer; transition:.16s; font-weight:500}
+  .btn:hover{background:var(--gold-soft); border-color:var(--gold-soft)}
+  .btn.ghost{background:none; color:var(--gold-soft); border-color:var(--line)}
+  .btn.ghost:hover{border-color:var(--gold)}
+  .btn:disabled{opacity:.4; cursor:not-allowed}
+  .btn.rec{background:var(--rust); border-color:var(--rust); color:#fff}
+  .btn.rec:hover{filter:brightness(1.08)}
+
+  .drop{border:1.5px dashed var(--line); border-radius:12px; padding:40px 20px; text-align:center; color:var(--paper-dim); transition:.18s; cursor:pointer}
+  .drop.over{border-color:var(--gold); background:rgba(199,154,62,.06); color:var(--paper)}
+  .drop b{color:var(--gold-soft); font-style:normal}
+
+  .mic-row{display:flex; align-items:center; gap:18px; flex-wrap:wrap}
+  .pulse{width:14px; height:14px; border-radius:50%; background:var(--rust); box-shadow:0 0 0 0 rgba(180,98,58,.6); animation:pulse 1.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(180,98,58,.55)}70%{box-shadow:0 0 0 16px rgba(180,98,58,0)}100%{box-shadow:0 0 0 0 rgba(180,98,58,0)}}
+  .timer{font-family:"IBM Plex Mono",monospace; font-size:22px; color:var(--paper)}
+
+  .status{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted); margin:16px 0 8px; min-height:18px}
+  .bar{height:5px; background:var(--ink); border-radius:99px; overflow:hidden; margin-bottom:6px}
+  .bar > i{display:block; height:100%; width:0; background:linear-gradient(90deg,var(--rust),var(--gold)); transition:width .25s}
+
+  .out{margin-top:26px}
+  .sec-title{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); border-bottom:1px solid var(--line); padding-bottom:8px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center}
+  .sec-title .mini{color:var(--muted); cursor:pointer; text-transform:none; letter-spacing:.04em}
+  .transcript{font-size:18px; line-height:1.7; white-space:pre-wrap; min-height:30px; color:var(--paper)}
+  .transcript:empty::before{content:"Your transcription will appear here."; color:var(--muted); font-style:italic; font-size:15px}
+
+  .verdict{display:flex; align-items:center; gap:16px; margin-bottom:16px}
+  .score{font-family:"Fraunces",serif; font-size:46px; font-weight:600; line-height:1}
+  .verdict .meta{font-size:14px; color:var(--paper-dim)}
+  .verdict .meta b{font-style:normal}
+  .rec{background:rgba(199,154,62,.08); border-left:3px solid var(--gold); padding:12px 16px; border-radius:0 8px 8px 0; margin-bottom:18px; font-style:italic; color:var(--gold-soft)}
+  .issues{list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px}
+  .issue{display:flex; gap:12px; align-items:flex-start; background:var(--ink); border:1px solid var(--line); border-radius:9px; padding:11px 13px; font-size:14px}
+  .issue .k{font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.08em; text-transform:uppercase; padding:3px 7px; border-radius:5px; white-space:nowrap; margin-top:2px}
+  .k.grammar{background:rgba(180,98,58,.18); color:#e09b78}
+  .k.style{background:rgba(199,154,62,.18); color:var(--gold-soft)}
+  .k.spelling{background:rgba(126,148,97,.18); color:#a8bd8a}
+  .issue del{color:var(--rust); text-decoration:line-through; text-decoration-color:rgba(180,98,58,.6)}
+  .issue ins{color:var(--green); text-decoration:none}
+  .none{color:var(--muted); font-style:italic}
+
+  .api-box{margin-top:14px; border-top:1px dashed var(--line); padding-top:14px}
+  .api-box summary{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); cursor:pointer}
+  .api-box input{background:var(--ink); border:1px solid var(--line); color:var(--paper); border-radius:8px; padding:9px 11px; font-family:"IBM Plex Mono",monospace; font-size:12px; width:100%; margin-top:8px}
+  .api-box p{font-size:12.5px; color:var(--muted); margin:8px 0 0}
+  .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:18px}
+  footer{margin-top:36px; font-size:12.5px; color:var(--muted); border-top:1px solid var(--line); padding-top:16px}
+  footer code{font-family:"IBM Plex Mono",monospace; color:var(--paper-dim); background:var(--ink); padding:2px 6px; border-radius:5px}
+  .hide{display:none !important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Resona<span class="dot">.</span></h1>
+    <span class="tag">local · offline · everywhere</span>
+  </header>
+  <p class="lede">Speech to text that never leaves your device — Whisper runs in your browser. When it's done, it reads the result back for grammar and offers a recommendation.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-mode="mic">Dictate</button>
+    <button class="tab" role="tab" aria-selected="false" data-mode="file">Upload file</button>
+  </div>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="field">
+        <label for="model">Model</label>
+        <select id="model">
+          <option value="Xenova/whisper-tiny">tiny · fastest · ~40MB</option>
+          <option value="Xenova/whisper-base" selected>base · balanced · ~75MB</option>
+          <option value="Xenova/whisper-small">small · most accurate · ~240MB</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="lang">Language</label>
+        <select id="lang">
+          <option value="auto" selected>auto-detect</option>
+          <option value="english">English</option>
+          <option value="japanese">日本語</option>
+          <option value="spanish">Español</option>
+          <option value="french">Français</option>
+          <option value="german">Deutsch</option>
+          <option value="korean">한국어</option>
+          <option value="chinese">中文</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="task">Task</label>
+        <select id="task">
+          <option value="transcribe" selected>transcribe</option>
+          <option value="translate">translate → EN</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- MIC -->
+    <div id="micPane">
+      <div class="mic-row">
+        <button class="btn rec" id="recBtn">● Start recording</button>
+        <div id="recLive" class="mic-row hide" style="gap:12px">
+          <span class="pulse"></span><span class="timer" id="timer">0:00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FILE -->
+    <div id="filePane" class="hide">
+      <div class="drop" id="drop">
+        <p><b>Drop an audio or video file</b> here, or click to choose.</p>
+        <p style="font-size:13px;margin:6px 0 0">mp3 · wav · m4a · ogg · webm · mp4 · mov</p>
+      </div>
+      <input type="file" id="fileInput" accept="audio/*,video/*" class="hide" />
+    </div>
+
+    <div class="status" id="status"></div>
+    <div class="bar hide" id="barWrap"><i id="bar"></i></div>
+
+    <div class="out">
+      <div class="sec-title">Transcript <span class="mini" id="copyT">copy</span></div>
+      <div class="transcript" id="transcript"></div>
+    </div>
+
+    <div class="out hide" id="reviewOut">
+      <div class="sec-title">Grammar review</div>
+      <div class="verdict">
+        <div class="score" id="score">—</div>
+        <div class="meta"><b id="verdictWord">Reading…</b><br/><span id="verdictSub"></span></div>
+      </div>
+      <div class="rec" id="rec"></div>
+      <ul class="issues" id="issues"></ul>
+      <div class="actions">
+        <button class="btn ghost" id="applyFix">Apply suggested fixes</button>
+        <button class="btn ghost" id="copyFix">Copy corrected text</button>
+      </div>
+    </div>
+
+    <details class="api-box">
+      <summary>Grammar engine — local rules (default) · or plug in an LLM</summary>
+      <input id="apiKey" type="password" placeholder="API key (optional — kept in memory only, never stored)" />
+      <input id="apiUrl" type="text" placeholder="Endpoint (default: https://api.anthropic.com/v1/messages)" />
+      <p>Leave blank to use the built-in offline grammar linter. Provide a key to route the transcript text (never the audio) to a model for deeper, context-aware suggestions. The request shape matches Anthropic's Messages API; adapt <code>callLLM()</code> in the source for other providers.</p>
+    </details>
+  </div>
+
+  <footer>
+    <p><b>Run it:</b> serve over a local server so the worker + model cache work, e.g. <code>python3 -m http.server</code> then open <code>http://localhost:8000</code> in Chrome or Edge (best WebGPU support). The first run downloads the model once, then it works fully offline.</p>
+    <p style="margin-top:8px"><b>Make it installable everywhere:</b> add a <code>manifest.json</code> + service worker and any phone/desktop can "Add to Home Screen" / "Install app" as a PWA.</p>
+  </footer>
+</div>
+
+<script type="module">
+/* ---------- Whisper worker (inline ESM module via Blob) ---------- */
+const workerSrc = `
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.0';
+env.allowLocalModels = false;
+let asr = null, currentModel = null;
+
+self.onmessage = async (e) => {
+  const { type } = e.data;
+  if (type === 'load') {
+    const { model } = e.data;
+    try {
+      if (currentModel !== model) {
+        asr = await pipeline('automatic-speech-recognition', model, {
+          // auto-detect device: WebGPU where available, WASM fallback otherwise
+          progress_callback: (p) => self.postMessage({ type: 'progress', data: p })
+        });
+        currentModel = model;
+      }
+      self.postMessage({ type: 'ready' });
+    } catch (err) { self.postMessage({ type: 'error', message: String(err) }); }
+    return;
+  }
+  if (type === 'run') {
+    const { audio, language, task } = e.data;
+    try {
+      const opts = { chunk_length_s: 30, stride_length_s: 5, task };
+      if (language && language !== 'auto') opts.language = language;
+      const result = await asr(audio, opts);
+      self.postMessage({ type: 'result', text: (result.text || '').trim() });
+    } catch (err) { self.postMessage({ type: 'error', message: String(err) }); }
+  }
+};
+`;
+const worker = new Worker(URL.createObjectURL(new Blob([workerSrc], { type: 'text/javascript' })), { type: 'module' });
+
+/* ---------- DOM ---------- */
+const $ = (id) => document.getElementById(id);
+const statusEl=$('status'), barWrap=$('barWrap'), bar=$('bar'), transcriptEl=$('transcript');
+let modelReady=false, busy=false;
+
+function setStatus(t){ statusEl.textContent=t; }
+function setProgress(pct){ barWrap.classList.toggle('hide', pct==null); if(pct!=null) bar.style.width=pct+'%'; }
+
+worker.onmessage = (e)=>{
+  const m=e.data;
+  if(m.type==='progress' && m.data && m.data.status==='progress'){
+    setProgress(Math.round(m.data.progress||0));
+    setStatus('Downloading model · '+(m.data.file||'')+' '+Math.round(m.data.progress||0)+'%');
+  } else if(m.type==='ready'){
+    modelReady=true; setProgress(null); setStatus('Model ready ✓');
+  } else if(m.type==='result'){
+    transcriptEl.textContent=m.text; busy=false; setProgress(null);
+    setStatus(m.text? 'Done. Reviewing grammar…' : 'No speech detected.');
+    if(m.text) runReview(m.text);
+  } else if(m.type==='error'){
+    busy=false; setProgress(null); setStatus('⚠ '+m.message);
+  }
+};
+
+async function ensureModel(){
+  if(modelReady && worker.__model===$('model').value) return;
+  modelReady=false; worker.__model=$('model').value;
+  setStatus('Loading model…'); setProgress(0);
+  worker.postMessage({ type:'load', model:$('model').value });
+  await new Promise(res=>{
+    const h=(e)=>{ if(e.data.type==='ready'||e.data.type==='error'){ worker.removeEventListener('message',h); res(); } };
+    worker.addEventListener('message',h);
+  });
+}
+
+/* ---------- Audio → 16kHz mono Float32 (the step everyone gets wrong) ---------- */
+async function toMono16k(arrayBuffer){
+  const ctx = new (window.AudioContext||window.webkitAudioContext)();
+  const decoded = await ctx.decodeAudioData(arrayBuffer);
+  const off = new OfflineAudioContext(1, Math.ceil(decoded.duration*16000), 16000);
+  const src = off.createBufferSource(); src.buffer=decoded; src.connect(off.destination); src.start();
+  const rendered = await off.startRendering();
+  ctx.close();
+  return rendered.getChannelData(0);
+}
+
+async function transcribe(arrayBuffer){
+  if(busy) return; busy=true;
+  $('reviewOut').classList.add('hide'); transcriptEl.textContent='';
+  try{
+    await ensureModel();
+    setStatus('Decoding audio…');
+    const audio = await toMono16k(arrayBuffer);
+    setStatus('Transcribing…');
+    worker.postMessage({ type:'run', audio, language:$('lang').value, task:$('task').value }, [audio.buffer]);
+  }catch(err){ busy=false; setStatus('⚠ '+err.message); }
+}
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected', x===t));
+  const mic = t.dataset.mode==='mic';
+  $('micPane').classList.toggle('hide', !mic);
+  $('filePane').classList.toggle('hide', mic);
+});
+
+/* ---------- File upload ---------- */
+const drop=$('drop'), fileInput=$('fileInput');
+drop.onclick=()=>fileInput.click();
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) handleFile(f); });
+fileInput.onchange=e=>{ const f=e.target.files[0]; if(f) handleFile(f); };
+async function handleFile(f){ setStatus('Reading '+f.name+'…'); transcribe(await f.arrayBuffer()); }
+
+/* ---------- Mic dictation ---------- */
+let mediaRec=null, chunks=[], timerInt=null, t0=0;
+$('recBtn').onclick=async()=>{
+  if(mediaRec && mediaRec.state==='recording'){ mediaRec.stop(); return; }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    chunks=[]; mediaRec=new MediaRecorder(stream);
+    mediaRec.ondataavailable=e=>chunks.push(e.data);
+    mediaRec.onstop=async()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      clearInterval(timerInt); $('recLive').classList.add('hide');
+      $('recBtn').textContent='● Start recording'; $('recBtn').classList.add('rec');
+      const blob=new Blob(chunks); transcribe(await blob.arrayBuffer());
+    };
+    mediaRec.start();
+    $('recBtn').textContent='■ Stop'; $('recBtn').classList.remove('rec');
+    $('recLive').classList.remove('hide'); t0=Date.now();
+    timerInt=setInterval(()=>{ const s=Math.floor((Date.now()-t0)/1000); $('timer').textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); },250);
+  }catch(err){ setStatus('⚠ Microphone blocked or unavailable: '+err.message); }
+};
+
+/* ================= GRAMMAR REVIEW ================= */
+let lastFix='';
+async function runReview(text){
+  const key=$('apiKey').value.trim();
+  let review = key ? await reviewWithLLM(text, key) : reviewLocal(text);
+  renderReview(text, review);
+  setStatus('Done ✓');
+}
+
+/* --- Local, fully-offline rule-based linter --- */
+function reviewLocal(text){
+  const issues=[]; let fixed=text;
+  const push=(kind,msg,from,to)=>issues.push({kind,msg,from,to});
+
+  // double spaces
+  if(/\s{2,}/.test(fixed)){ push('style','Collapse repeated spaces','  ',' '); fixed=fixed.replace(/[ \t]{2,}/g,' '); }
+  // space before punctuation
+  if(/\s+[,.;:!?]/.test(fixed)){ push('style','Remove space before punctuation',' ,',','); fixed=fixed.replace(/\s+([,.;:!?])/g,'$1'); }
+  // lowercase standalone "i"
+  if(/\bi\b/.test(fixed)){ push('grammar','Capitalize the pronoun “I”','i','I'); fixed=fixed.replace(/\bi\b/g,'I'); }
+  // repeated word ("the the")
+  const dup=fixed.match(/\b(\w+)\s+\1\b/i);
+  if(dup){ push('grammar','Remove the repeated word',dup[1]+' '+dup[1],dup[1]); fixed=fixed.replace(/\b(\w+)\s+\1\b/ig,'$1'); }
+  // a / an before vowel sound (light heuristic)
+  if(/\ba\s+[aeiou]/i.test(fixed)){ push('grammar','Use “an” before a vowel sound','a apple','an apple'); fixed=fixed.replace(/\ba(\s+[aeiou])/g,'an$1'); }
+  if(/\ban\s+(?![aeiou])/i.test(fixed)){ push('grammar','Use “a” before a consonant sound','an car','a car'); }
+  // sentence-start capitalization + terminal punctuation
+  fixed=fixed.replace(/(^|[.!?]\s+)([a-z])/g,(m,p,c)=>{ push('grammar','Capitalize the start of a sentence',c,c.toUpperCase()); return p+c.toUpperCase(); });
+  const trimmed=fixed.trim();
+  if(trimmed && !/[.!?]$/.test(trimmed)){ push('style','Add closing punctuation','…','.'); fixed=trimmed+'.'; }
+
+  // de-duplicate identical messages
+  const seen=new Set(); const uniq=issues.filter(i=>{ if(seen.has(i.msg))return false; seen.add(i.msg); return true; });
+  const score=Math.max(40, 100 - uniq.length*9);
+  return { score, issues:uniq, fixed:fixed.trim(), source:'local rules' };
+}
+
+/* --- Optional LLM reviewer (text only — audio never leaves device) --- */
+async function reviewWithLLM(text, key){
+  try{
+    return await callLLM(text, key);
+  }catch(err){ const r=reviewLocal(text); r.note='LLM call failed ('+err.message+') — used local rules.'; return r; }
+}
+async function callLLM(text, key){
+  const url = $('apiUrl').value.trim() || 'https://api.anthropic.com/v1/messages';
+  const prompt = 'You are a grammar reviewer. Assess the grammar and clarity of the transcript below. '
+    + 'Respond with ONLY a JSON object, no prose, no markdown fences: '
+    + '{"score": <0-100 integer>, "recommendation": "<one sentence>", '
+    + '"issues": [{"kind":"grammar|style|spelling","msg":"<short>","from":"<original>","to":"<suggested>"}], '
+    + '"fixed": "<corrected full text>"}\n\nTranscript:\n' + text;
+  const res = await fetch(url, {
+    method:'POST',
+    headers:{ 'content-type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1024, messages:[{role:'user', content:prompt}] })
+  });
+  const data = await res.json();
+  const raw = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').replace(/```json|```/g,'').trim();
+  const parsed = JSON.parse(raw);
+  return { score:parsed.score, issues:parsed.issues||[], fixed:parsed.fixed||text, recommendation:parsed.recommendation, source:'LLM' };
+}
+
+function renderReview(original, r){
+  $('reviewOut').classList.remove('hide');
+  $('score').textContent = r.score;
+  $('score').style.color = r.score>=85?'var(--green)':r.score>=65?'var(--gold-soft)':'var(--rust)';
+  const word = r.score>=85?'Clean':r.score>=65?'Solid, minor fixes':'Needs work';
+  $('verdictWord').textContent = word;
+  $('verdictSub').textContent = (r.issues.length||0)+' suggestion'+(r.issues.length===1?'':'s')+' · '+(r.source)+(r.note?' · '+r.note:'');
+  const rec = r.recommendation || (r.score>=85
+      ? 'Reads well — ship it as is.'
+      : r.score>=65 ? 'A couple of tidy-ups and this is publish-ready.'
+      : 'Worth a careful pass before sharing — start with the flagged items.');
+  $('rec').textContent = rec;
+  const ul=$('issues'); ul.innerHTML='';
+  if(!r.issues.length){ ul.innerHTML='<li class="none">No grammar issues found.</li>'; }
+  r.issues.forEach(i=>{
+    const li=document.createElement('li'); li.className='issue';
+    li.innerHTML='<span class="k '+(i.kind||'grammar')+'">'+(i.kind||'grammar')+'</span>'
+      +'<span>'+escapeHtml(i.msg)+(i.from?' &nbsp; <del>'+escapeHtml(i.from)+'</del> <ins>'+escapeHtml(i.to||'')+'</ins>':'')+'</span>';
+    ul.appendChild(li);
+  });
+  lastFix = r.fixed || original;
+}
+function escapeHtml(s){ return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+$('applyFix').onclick=()=>{ if(lastFix){ transcriptEl.textContent=lastFix; setStatus('Applied corrected text.'); } };
+$('copyFix').onclick=()=>navigator.clipboard.writeText(lastFix||'').then(()=>setStatus('Corrected text copied.'));
+$('copyT').onclick=()=>navigator.clipboard.writeText(transcriptEl.textContent||'').then(()=>setStatus('Transcript copied.'));
+</script>
+</body>
+</html>

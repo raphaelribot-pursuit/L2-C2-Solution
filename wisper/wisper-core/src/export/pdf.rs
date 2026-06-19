@@ -130,6 +130,8 @@ mod tests {
             start_ms: 0,
             end_ms: 1000,
             text: "Hello".into(),
+            speaker: None,
+            words: None,
         }];
         let bytes = format_transcript_pdf(&segments, "Title").unwrap();
         let text = String::from_utf8_lossy(&bytes);

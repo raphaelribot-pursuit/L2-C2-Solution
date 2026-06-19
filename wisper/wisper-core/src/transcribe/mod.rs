@@ -12,10 +12,21 @@ use crate::engine::WhisperEngine;
 use crate::error::WisperError;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct TranscriptWord {
+    pub start_ms: i64,
+    pub end_ms: i64,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TranscriptSegment {
     pub start_ms: i64,
     pub end_ms: i64,
     pub text: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speaker: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub words: Option<Vec<TranscriptWord>>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -253,9 +264,69 @@ fn chunk_windows(total_ms: u64) -> Vec<(i32, i32)> {
 
 type ProgressCallback = Arc<Mutex<Box<dyn FnMut(TranscriptionProgress) + Send>>>;
 
+fn is_special_token(piece: &str) -> bool {
+    piece.starts_with('[') && piece.ends_with(']')
+}
+
+fn collect_words(segment: &whisper_rs::WhisperSegment<'_>) -> Vec<TranscriptWord> {
+    let mut words = Vec::new();
+    let mut current = String::new();
+    let mut word_start: Option<i64> = None;
+    let mut word_end = 0i64;
+
+    for token_idx in 0..segment.n_tokens() {
+        let Some(token) = segment.get_token(token_idx) else {
+            continue;
+        };
+        let piece = match token.to_str_lossy() {
+            Ok(piece) => piece.into_owned(),
+            Err(_) => continue,
+        };
+        if piece.is_empty() || is_special_token(&piece) {
+            continue;
+        }
+
+        let data = token.token_data();
+        let t0 = data.t0 * 10;
+        let t1 = data.t1 * 10;
+        let starts_word = piece.starts_with(' ') || current.is_empty();
+
+        if starts_word && !current.is_empty() {
+            let text = current.trim().to_string();
+            if !text.is_empty() {
+                words.push(TranscriptWord {
+                    start_ms: word_start.unwrap_or(0),
+                    end_ms: word_end,
+                    text,
+                });
+            }
+            current.clear();
+            word_start = None;
+        }
+
+        if word_start.is_none() {
+            word_start = Some(t0);
+        }
+        word_end = t1;
+        current.push_str(piece.trim_start());
+    }
+
+    let text = current.trim().to_string();
+    if !text.is_empty() {
+        words.push(TranscriptWord {
+            start_ms: word_start.unwrap_or(0),
+            end_ms: word_end,
+            text,
+        });
+    }
+
+    words
+}
+
 fn collect_segments(state: &whisper_rs::WhisperState) -> Result<Vec<TranscriptSegment>, WisperError> {
     let n = state.full_n_segments();
     let mut segments = Vec::with_capacity(n as usize);
+    let mut speaker_idx = 1usize;
 
     for i in 0..n {
         let segment = state
@@ -272,12 +343,21 @@ fn collect_segments(state: &whisper_rs::WhisperState) -> Result<Vec<TranscriptSe
             continue;
         }
 
+        let words = collect_words(&segment);
+        let speaker = Some(format!("Speaker {speaker_idx}"));
+
         segments.push(TranscriptSegment {
             // whisper.cpp applies offset_ms to segment t0/t1 when using the full PCM buffer.
             start_ms: segment.start_timestamp() * 10,
             end_ms: segment.end_timestamp() * 10,
             text,
+            speaker,
+            words: if words.is_empty() { None } else { Some(words) },
         });
+
+        if segment.next_segment_speaker_turn() {
+            speaker_idx += 1;
+        }
     }
 
     Ok(segments)
@@ -406,6 +486,7 @@ pub fn transcribe_pcm(
         }
         params.set_debug_mode(false);
         params.set_token_timestamps(true);
+        params.set_tdrz_enable(true);
         apply_chunk_window(&mut params, window.offset_ms, window.duration_ms, chunked);
         params.set_print_special(verbose);
         params.set_print_progress(verbose);
@@ -617,6 +698,8 @@ mod tests {
             start_ms: 170_000,
             end_ms: 172_000,
             text: "end of chunk one".into(),
+            speaker: None,
+            words: None,
         }];
 
         merge_chunk_segments(
@@ -630,16 +713,22 @@ mod tests {
                     start_ms: 178_500,
                     end_ms: 179_000,
                     text: "inside overlap".into(),
+                    speaker: None,
+                    words: None,
                 },
                 TranscriptSegment {
                     start_ms: 180_000,
                     end_ms: 181_000,
                     text: "end of chunk one".into(),
+                    speaker: None,
+                    words: None,
                 },
                 TranscriptSegment {
                     start_ms: 181_000,
                     end_ms: 182_000,
                     text: "new content".into(),
+                    speaker: None,
+                    words: None,
                 },
             ],
         );

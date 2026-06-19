@@ -1,0 +1,43 @@
+<svg width="680" height="520" viewBox="0 0 680 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Resona landing hero">
+  <defs>
+    <clipPath id="hc"><rect x="20" y="20" width="640" height="480" rx="16"/></clipPath>
+    <linearGradient id="hg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0B3A44"/><stop offset="1" stop-color="#061A20"/>
+    </linearGradient>
+    <linearGradient id="lf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7FE6B6"/><stop offset="1" stop-color="#3FB37E"/>
+    </linearGradient>
+  </defs>
+  <rect x="20" y="20" width="640" height="480" rx="16" fill="url(#hg)"/>
+  <g clip-path="url(#hc)" opacity="0.5">
+    <g stroke="#5FD3A0" stroke-width="2" stroke-linecap="round" opacity="0.18">
+      <line x1="70" y1="150" x2="70" y2="120"/><line x1="92" y1="160" x2="92" y2="110"/><line x1="114" y1="170" x2="114" y2="100"/><line x1="136" y1="158" x2="136" y2="112"/><line x1="158" y1="148" x2="158" y2="122"/><line x1="180" y1="166" x2="180" y2="104"/><line x1="202" y1="176" x2="202" y2="94"/><line x1="224" y1="156" x2="224" y2="114"/><line x1="540" y1="150" x2="540" y2="120"/><line x1="562" y1="164" x2="562" y2="106"/><line x1="584" y1="176" x2="584" y2="94"/><line x1="606" y1="158" x2="606" y2="112"/><line x1="628" y1="148" x2="628" y2="122"/>
+    </g>
+  </g>
+  <g transform="translate(48,40) scale(0.95)">
+    <path d="M16 3 C23 9 25 19 16 29 C7 19 9 9 16 3 Z" fill="url(#lf)"/>
+    <g stroke="#072019" stroke-width="1.6" stroke-linecap="round">
+      <line x1="11.5" y1="19" x2="11.5" y2="15"/><line x1="14" y1="21.5" x2="14" y2="12.5"/><line x1="16.5" y1="23" x2="16.5" y2="11"/><line x1="19" y1="21.5" x2="19" y2="12.5"/><line x1="21.5" y1="19" x2="21.5" y2="15"/>
+    </g>
+  </g>
+  <text x="82" y="60" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="22" font-weight="600" fill="#EAF6F1">Resona</text>
+  <rect x="556" y="38" width="84" height="28" rx="14" fill="#5FD3A0"/>
+  <text x="598" y="56" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12.5" font-weight="600" fill="#062018">Download</text>
+
+  <line x1="196" y1="186" x2="226" y2="186" stroke="#5FD3A0" stroke-width="1" opacity="0.6"/>
+  <text x="340" y="190" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" letter-spacing="3" fill="#7FE6B6">PRIVATE VOICE-TO-TEXT</text>
+  <line x1="454" y1="186" x2="484" y2="186" stroke="#5FD3A0" stroke-width="1" opacity="0.6"/>
+
+  <text x="340" y="258" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="50" font-weight="600" letter-spacing="-1" fill="#EAF6F1">Voice to text,</text>
+  <text x="340" y="314" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="50" font-weight="600" letter-spacing="-1" fill="#5FD3A0">that stays yours.</text>
+
+  <text x="340" y="362" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" fill="#A9C3BD">Live dictation and file transcription, polished for grammar.</text>
+  <text x="340" y="386" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" fill="#A9C3BD">It all runs on your device — your audio never leaves it.</text>
+
+  <rect x="190" y="412" width="152" height="46" rx="23" fill="#5FD3A0"/>
+  <text x="266" y="441" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="600" fill="#062018">Download free</text>
+  <rect x="354" y="412" width="138" height="46" rx="23" fill="none" stroke="#EAF6F1" stroke-width="1" opacity="0.7"/>
+  <text x="423" y="441" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" fill="#EAF6F1">How it works</text>
+
+  <text x="340" y="484" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" letter-spacing="1.5" fill="#7E9892">ON-DEVICE   ·   WORKS OFFLINE   ·   NO ACCOUNT NEEDED</text>
+</svg>

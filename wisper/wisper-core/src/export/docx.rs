@@ -106,6 +106,8 @@ mod tests {
             start_ms: 0,
             end_ms: 1000,
             text: "Hello".into(),
+            speaker: None,
+            words: None,
         }];
         let bytes = format_transcript_docx(&segments, "Test").unwrap();
         let cursor = std::io::Cursor::new(bytes);

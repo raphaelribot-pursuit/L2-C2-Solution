@@ -15,6 +15,7 @@ Privacy-first, local-only clone of **Whisper Notes** — record, import files, o
 | [QA-CHECKLIST.md](./QA-CHECKLIST.md) | Step-by-step verification sequence |
 | [docs/Aisling-corrections.md](./docs/Aisling-corrections.md) | **Authoritative** Week 2 reconciliation + HEART plan |
 | [docs/Week2-PRD-STATUS.md](./docs/Week2-PRD-STATUS.md) | Jimmy PRD → correction ID map |
+| [docs/RESONA-VISUAL-REDESIGN.md](./docs/RESONA-VISUAL-REDESIGN.md) | **Resona merge** — visual redesign plan (pending OK) |
 | `_partner-review/` | Jimmy’s Week 2 PRD package (reference) |
 
 Other docs (`TECHNICAL_ARCHITECTURE.md`, `GPU_BACKENDS.md`, net-new PRD `.docx`) stay on each developer machine — not committed to git (see `.gitignore`).

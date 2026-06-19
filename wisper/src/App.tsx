@@ -21,10 +21,18 @@ interface DownloadProgress {
   automatic?: boolean;
 }
 
+interface TranscriptWord {
+  start_ms: number;
+  end_ms: number;
+  text: string;
+}
+
 interface TranscriptSegment {
   start_ms: number;
   end_ms: number;
   text: string;
+  speaker?: string | null;
+  words?: TranscriptWord[] | null;
 }
 
 interface RecordingSummary {
@@ -34,6 +42,8 @@ interface RecordingSummary {
   duration_ms: number | null;
   source: string;
   source_url: string | null;
+  media_path?: string | null;
+  is_video?: boolean;
 }
 
 interface ComputeInfo {
@@ -1177,6 +1187,31 @@ function App() {
     await exportTranscriptBinary("zip", "ZIP bundle", "export_transcript_bundle", "save_transcript_bundle_file");
   }
 
+  async function exportTranscriptSrtWords() {
+    await exportTranscriptFile("srt", "export_transcript_srt_words", "save_transcript_srt_file");
+  }
+
+  async function exportTranscriptCsvWords() {
+    await exportTranscriptFile("csv", "export_transcript_csv_words", "save_transcript_csv_file");
+  }
+
+  async function saveBurnInVideo() {
+    if (!recordingId) return;
+    setError(null);
+    setStatus("Burning subtitles into video…");
+    try {
+      const path = await invoke<string | null>("save_burn_in_video", { recordingId });
+      if (path) {
+        setStatus(`Saved video with burned-in subtitles: ${path.split(/[/\\]/).pop()}.`);
+      } else {
+        setStatus("Burn-in cancelled.");
+      }
+    } catch (e) {
+      setError(String(e));
+      setStatus("Could not burn in subtitles.");
+    }
+  }
+
   async function exportLibraryZip() {
     if (library.length === 0) return;
     setError(null);
@@ -1253,6 +1288,9 @@ function App() {
       : transcribing
         ? "Loading model…"
         : "";
+
+  const activeRecording = library.find((item) => item.id === recordingId);
+  const canBurnInSubtitles = Boolean(activeRecording?.is_video && ffmpegStatus?.available);
 
   return (
     <>
@@ -1849,12 +1887,16 @@ function App() {
                   onExportTxt={exportTranscriptTxt}
                   onExportSrt={exportTranscriptSrt}
                   onExportVtt={exportTranscriptVtt}
+                  onExportSrtWords={exportTranscriptSrtWords}
                 />
                 <button type="button" onClick={exportTranscriptJson} disabled={busy}>
                   JSON
                 </button>
                 <button type="button" onClick={exportTranscriptCsv} disabled={busy}>
                   CSV
+                </button>
+                <button type="button" onClick={exportTranscriptCsvWords} disabled={busy} title="One row per word">
+                  CSV words
                 </button>
                 <button type="button" onClick={exportTranscriptDocx} disabled={busy}>
                   Word
@@ -1865,6 +1907,16 @@ function App() {
                 <button type="button" onClick={exportTranscriptZip} disabled={busy}>
                   ZIP
                 </button>
+                {canBurnInSubtitles && (
+                  <button
+                    type="button"
+                    onClick={saveBurnInVideo}
+                    disabled={busy}
+                    title="Render subtitles into a new MP4 using ffmpeg"
+                  >
+                    Burn-in video
+                  </button>
+                )}
                 <button
                   type="button"
                   className="cancel"
@@ -1878,9 +1930,19 @@ function App() {
           </div>
           <ul>
             {segments.map((seg, i) => (
-              <li key={`${seg.start_ms}-${i}`}>
+              <li
+                key={`${seg.start_ms}-${i}`}
+                title={
+                  seg.words?.length
+                    ? seg.words
+                        .map((word) => `${formatTimestamp(word.start_ms)} ${word.text}`)
+                        .join(" · ")
+                    : undefined
+                }
+              >
                 <span className="time">
                   {formatTimestamp(seg.start_ms)} – {formatTimestamp(seg.end_ms)}
+                  {seg.speaker ? ` · ${seg.speaker}` : ""}
                 </span>
                 {recordingId ? (
                   <textarea

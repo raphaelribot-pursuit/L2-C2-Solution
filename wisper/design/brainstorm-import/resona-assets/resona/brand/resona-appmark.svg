@@ -1,0 +1,19 @@
+<svg width="240" height="240" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Resona app icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0B3A44"/><stop offset="1" stop-color="#061A20"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7FE6B6"/><stop offset="1" stop-color="#3FB37E"/>
+    </linearGradient>
+  </defs>
+  <rect width="240" height="240" rx="54" fill="url(#bg)"/>
+  <g transform="translate(48,40) scale(4.5)">
+    <path d="M16 3 C23 9 25 19 16 29 C7 19 9 9 16 3 Z" fill="url(#leaf)"/>
+    <g stroke="#072019" stroke-width="1.5" stroke-linecap="round">
+      <line x1="11.5" y1="19" x2="11.5" y2="15"/><line x1="14" y1="21.5" x2="14" y2="12.5"/>
+      <line x1="16.5" y1="23" x2="16.5" y2="11"/><line x1="19" y1="21.5" x2="19" y2="12.5"/>
+      <line x1="21.5" y1="19" x2="21.5" y2="15"/>
+    </g>
+  </g>
+</svg>

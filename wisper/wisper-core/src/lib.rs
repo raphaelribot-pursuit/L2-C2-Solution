@@ -11,6 +11,7 @@ pub mod storage;
 pub mod tool_refresh;
 pub mod transcribe;
 pub mod update;
+pub mod video;
 
 pub use compute::{
     app_about, compiled_gpu_backend, compute_info, cpu_architecture_label, platform_os_label,
@@ -20,9 +21,11 @@ pub use compute::{
 pub use engine::WhisperEngine;
 pub use error::WisperError;
 pub use export::{
-    build_library_bundle, build_transcript_bundle, format_transcript_csv, format_transcript_docx,
-    format_transcript_json, format_transcript_pdf, format_transcript_srt, format_transcript_txt,
-    format_transcript_vtt, sanitize_export_folder_name, TranscriptExportSet,
+    build_library_bundle, build_transcript_bundle, format_transcript_csv,
+    format_transcript_csv_words, format_transcript_docx, format_transcript_json,
+    format_transcript_pdf, format_transcript_srt, format_transcript_srt_words,
+    format_transcript_txt, format_transcript_vtt, sanitize_export_folder_name,
+    TranscriptExportSet,
 };
 pub use hardware::{
     get_system_profile, recommend_model, run_compute_benchmark, BenchmarkResult,
@@ -46,8 +49,9 @@ pub use tool_refresh::{managed_tool_is_stale, refresh_stale_managed_tools, MANAG
 pub use storage::{RecordingSource, RecordingSummary, Storage};
 pub use transcribe::{
     transcribe_file, transcribe_with_engine, GpuFallbackNotice, TranscribeOptions,
-    TranscriptSegment, TranscriptionProgress, TranscriptionResult,
+    TranscriptSegment, TranscriptWord, TranscriptionProgress, TranscriptionResult,
 };
+pub use video::{burn_in_subtitles, is_video_path};
 pub use update::{check_for_update, UpdateCheckResult, GITHUB_REPO};
 
 /// Default model filename (user downloads to app data dir on first run).

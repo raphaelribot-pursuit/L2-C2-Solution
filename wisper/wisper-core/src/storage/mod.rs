@@ -60,7 +60,7 @@ CREATE TRIGGER IF NOT EXISTS transcript_segments_au AFTER UPDATE ON transcript_s
 END;
 "#;
 
-const SCHEMA_VERSION: i32 = 2;
+const SCHEMA_VERSION: i32 = 3;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RecordingSummary {
@@ -70,6 +70,8 @@ pub struct RecordingSummary {
     pub duration_ms: Option<i64>,
     pub source: String,
     pub source_url: Option<String>,
+    pub media_path: Option<String>,
+    pub is_video: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -123,19 +125,61 @@ impl Storage {
             .pragma_query_value(None, "user_version", |row| row.get(0))
             .unwrap_or(0);
 
-        if version < SCHEMA_VERSION {
+        if version < 2 {
             self.conn
                 .execute_batch(FTS_TRIGGERS)
                 .map_err(|e| WisperError::Storage(e.to_string()))?;
             self.conn
                 .execute("INSERT INTO transcripts_fts(transcripts_fts) VALUES('rebuild')", [])
                 .map_err(|e| WisperError::Storage(e.to_string()))?;
+        }
+
+        if version < 3 {
+            let _ = self.conn.execute(
+                "ALTER TABLE transcript_segments ADD COLUMN speaker TEXT",
+                [],
+            );
+            let _ = self.conn.execute(
+                "ALTER TABLE transcript_segments ADD COLUMN words_json TEXT",
+                [],
+            );
+        }
+
+        if version < SCHEMA_VERSION {
             self.conn
                 .execute(&format!("PRAGMA user_version = {SCHEMA_VERSION}"), [])
                 .map_err(|e| WisperError::Storage(e.to_string()))?;
         }
 
         Ok(())
+    }
+
+    fn is_video_path(path: &str) -> bool {
+        let ext = Path::new(path)
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_ascii_lowercase());
+        matches!(
+            ext.as_deref(),
+            Some("mp4") | Some("mov") | Some("mkv") | Some("webm") | Some("m4v")
+        )
+    }
+
+    fn summary_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<RecordingSummary> {
+        let media_path: Option<String> = row.get(6)?;
+        let is_video = media_path
+            .as_deref()
+            .is_some_and(Self::is_video_path);
+        Ok(RecordingSummary {
+            id: row.get(0)?,
+            title: row.get(1)?,
+            created_at: row.get(2)?,
+            duration_ms: row.get(3)?,
+            source: row.get(4)?,
+            source_url: row.get(5)?,
+            media_path,
+            is_video,
+        })
     }
 
     pub fn save_transcript(
@@ -178,10 +222,14 @@ impl Storage {
         .map_err(|e| WisperError::Storage(e.to_string()))?;
 
         for seg in segments {
+            let words_json = seg
+                .words
+                .as_ref()
+                .and_then(|words| serde_json::to_string(words).ok());
             tx.execute(
-                "INSERT INTO transcript_segments (recording_id, start_ms, end_ms, text)
-                 VALUES (?1, ?2, ?3, ?4)",
-                params![id, seg.start_ms, seg.end_ms, seg.text],
+                "INSERT INTO transcript_segments (recording_id, start_ms, end_ms, text, speaker, words_json)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![id, seg.start_ms, seg.end_ms, seg.text, seg.speaker, words_json],
             )
             .map_err(|e| WisperError::Storage(e.to_string()))?;
         }
@@ -215,26 +263,27 @@ impl Storage {
         let mut stmt = self
             .conn
             .prepare(
-                "SELECT id, title, created_at, duration_ms, source, source_url
+                "SELECT id, title, created_at, duration_ms, source, source_url, audio_path
                  FROM recordings
                  ORDER BY created_at DESC",
             )
             .map_err(|e| WisperError::Storage(e.to_string()))?;
 
         let rows = stmt
-            .query_map([], |row| {
-                Ok(RecordingSummary {
-                    id: row.get(0)?,
-                    title: row.get(1)?,
-                    created_at: row.get(2)?,
-                    duration_ms: row.get(3)?,
-                    source: row.get(4)?,
-                    source_url: row.get(5)?,
-                })
-            })
+            .query_map([], Self::summary_from_row)
             .map_err(|e| WisperError::Storage(e.to_string()))?;
 
         rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| WisperError::Storage(e.to_string()))
+    }
+
+    pub fn get_media_path(&self, recording_id: &str) -> Result<Option<String>, WisperError> {
+        self.conn
+            .query_row(
+                "SELECT audio_path FROM recordings WHERE id = ?1",
+                params![recording_id],
+                |row| row.get(0),
+            )
             .map_err(|e| WisperError::Storage(e.to_string()))
     }
 
@@ -242,7 +291,7 @@ impl Storage {
         let mut stmt = self
             .conn
             .prepare(
-                "SELECT start_ms, end_ms, text
+                "SELECT start_ms, end_ms, text, speaker, words_json
                  FROM transcript_segments
                  WHERE recording_id = ?1
                  ORDER BY start_ms ASC, id ASC",
@@ -251,10 +300,16 @@ impl Storage {
 
         let rows = stmt
             .query_map(params![recording_id], |row| {
+                let words_json: Option<String> = row.get(4)?;
+                let words = words_json
+                    .as_deref()
+                    .and_then(|json| serde_json::from_str(json).ok());
                 Ok(TranscriptSegment {
                     start_ms: row.get(0)?,
                     end_ms: row.get(1)?,
                     text: row.get(2)?,
+                    speaker: row.get(3)?,
+                    words,
                 })
             })
             .map_err(|e| WisperError::Storage(e.to_string()))?;
@@ -278,7 +333,7 @@ impl Storage {
 
         self.conn
             .execute(
-                "UPDATE transcript_segments SET text = ?1 WHERE id = ?2 AND recording_id = ?3",
+                "UPDATE transcript_segments SET text = ?1, words_json = NULL WHERE id = ?2 AND recording_id = ?3",
                 params![text, segment_id, recording_id],
             )
             .map_err(|e| WisperError::Storage(e.to_string()))?;
@@ -298,7 +353,7 @@ impl Storage {
         let mut stmt = self
             .conn
             .prepare(
-                "SELECT DISTINCT r.id, r.title, r.created_at, r.duration_ms, r.source, r.source_url
+                "SELECT DISTINCT r.id, r.title, r.created_at, r.duration_ms, r.source, r.source_url, r.audio_path
                  FROM transcripts_fts
                  JOIN recordings r ON r.id = transcripts_fts.recording_id
                  WHERE transcripts_fts MATCH ?1
@@ -307,16 +362,7 @@ impl Storage {
             .map_err(|e| WisperError::Storage(e.to_string()))?;
 
         let rows = stmt
-            .query_map(params![match_expr], |row| {
-                Ok(RecordingSummary {
-                    id: row.get(0)?,
-                    title: row.get(1)?,
-                    created_at: row.get(2)?,
-                    duration_ms: row.get(3)?,
-                    source: row.get(4)?,
-                    source_url: row.get(5)?,
-                })
-            })
+            .query_map(params![match_expr], Self::summary_from_row)
             .map_err(|e| WisperError::Storage(e.to_string()))?;
 
         rows.collect::<Result<Vec<_>, _>>()
@@ -388,6 +434,8 @@ mod tests {
                     start_ms: 0,
                     end_ms: 1000,
                     text: "quarterly revenue increased".into(),
+                    speaker: None,
+                    words: None,
                 }],
             )
             .expect("save");
@@ -424,6 +472,8 @@ mod tests {
                     start_ms: 0,
                     end_ms: 500,
                     text: "hello".into(),
+                    speaker: None,
+                    words: None,
                 }],
             )
             .expect("save");

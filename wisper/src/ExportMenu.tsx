@@ -5,9 +5,16 @@ interface ExportMenuProps {
   onExportTxt: () => void;
   onExportSrt: () => void;
   onExportVtt: () => void;
+  onExportSrtWords: () => void;
 }
 
-export function ExportMenu({ disabled, onExportTxt, onExportSrt, onExportVtt }: ExportMenuProps) {
+export function ExportMenu({
+  disabled,
+  onExportTxt,
+  onExportSrt,
+  onExportVtt,
+  onExportSrtWords,
+}: ExportMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -58,6 +65,9 @@ export function ExportMenu({ disabled, onExportTxt, onExportSrt, onExportVtt }: 
           </button>
           <button type="button" role="menuitem" onClick={() => run(onExportSrt)}>
             Subtitles (.srt)
+          </button>
+          <button type="button" role="menuitem" onClick={() => run(onExportSrtWords)}>
+            Word-level SRT (.srt)
           </button>
           <button type="button" role="menuitem" onClick={() => run(onExportVtt)}>
             WebVTT (.vtt)

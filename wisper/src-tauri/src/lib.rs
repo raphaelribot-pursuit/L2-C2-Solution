@@ -12,10 +12,11 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use uuid::Uuid;
 use wisper_core::{
-    app_about, build_library_bundle, build_transcript_bundle, compute_info, download_starter_model,
-    download_url, format_transcript_csv, format_transcript_docx, format_transcript_json,
-    format_transcript_pdf, format_transcript_srt, format_transcript_txt, format_transcript_vtt,
-    get_system_profile, import_model_file, model_status_for_tier, recommend_model,
+    app_about, build_library_bundle, build_transcript_bundle, burn_in_subtitles, compute_info,
+    download_starter_model, download_url, format_transcript_csv, format_transcript_csv_words,
+    format_transcript_docx, format_transcript_json, format_transcript_pdf, format_transcript_srt,
+    format_transcript_srt_words, format_transcript_txt, format_transcript_vtt, get_system_profile,
+    import_model_file, is_video_path, model_status_for_tier, recommend_model,
     resolve_model_path_for_tier, resolve_yt_dlp, run_compute_benchmark, transcribe_with_engine,
     download_all_starter_models, download_yt_dlp, download_ffmpeg, ffmpeg_status,
     ffmpeg_install_filename, managed_tool_is_stale, refresh_stale_managed_tools,
@@ -536,6 +537,26 @@ fn export_transcript_csv(
 }
 
 #[tauri::command]
+fn export_transcript_csv_words(
+    state: tauri::State<'_, AppState>,
+    recording_id: String,
+) -> Result<String, String> {
+    let storage = state.storage.lock().map_err(|e| e.to_string())?;
+    let segments = segments_for_recording(&storage, &recording_id)?;
+    Ok(format_transcript_csv_words(&segments))
+}
+
+#[tauri::command]
+fn export_transcript_srt_words(
+    state: tauri::State<'_, AppState>,
+    recording_id: String,
+) -> Result<String, String> {
+    let storage = state.storage.lock().map_err(|e| e.to_string())?;
+    let segments = segments_for_recording(&storage, &recording_id)?;
+    Ok(format_transcript_srt_words(&segments))
+}
+
+#[tauri::command]
 fn export_transcript_docx(
     state: tauri::State<'_, AppState>,
     recording_id: String,
@@ -695,6 +716,73 @@ fn save_transcript_bytes_file(
         .map_err(|e| format!("invalid save path: {e}"))?;
     std::fs::write(&path, contents).map_err(|e| e.to_string())?;
     Ok(Some(path.to_string_lossy().into_owned()))
+}
+
+fn safe_export_stem(title: &str) -> String {
+    let stem: String = title
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    if stem.is_empty() {
+        "transcript".into()
+    } else {
+        stem
+    }
+}
+
+#[tauri::command]
+async fn save_burn_in_video(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+    recording_id: String,
+) -> Result<Option<String>, String> {
+    let (segments, media_path, title) = {
+        let storage = state.storage.lock().map_err(|e| e.to_string())?;
+        let segments = segments_for_recording(&storage, &recording_id)?;
+        let media_path = storage
+            .get_media_path(&recording_id)
+            .map_err(|e| e.to_string())?;
+        let title = recording_title_for_export(&storage, &recording_id)?;
+        (segments, media_path, title)
+    };
+
+    let media_path = media_path.ok_or_else(|| {
+        "This recording has no source media file for burn-in subtitles.".to_string()
+    })?;
+    let video_path = PathBuf::from(media_path);
+    if !is_video_path(&video_path) {
+        return Err("Burn-in subtitles require an imported video file.".into());
+    }
+
+    let default_filename = format!("{}_subtitled.mp4", safe_export_stem(&title));
+    let mut dialog = app
+        .dialog()
+        .file()
+        .set_title("Save video with burned-in subtitles")
+        .set_file_name(default_filename)
+        .add_filter("MP4 video", &["mp4"]);
+    let picked = dialog.blocking_save_file();
+    let Some(picked) = picked else {
+        return Ok(None);
+    };
+    let output_path = picked
+        .into_path()
+        .map_err(|e| format!("invalid save path: {e}"))?;
+
+    let video_clone = video_path.clone();
+    let output_clone = output_path.clone();
+    tauri::async_runtime::spawn_blocking(move || burn_in_subtitles(&video_clone, &segments, &output_clone))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+
+    Ok(Some(output_path.to_string_lossy().into_owned()))
 }
 
 #[tauri::command]
@@ -1213,6 +1301,8 @@ pub fn run() {
             export_transcript_vtt,
             export_transcript_json,
             export_transcript_csv,
+            export_transcript_csv_words,
+            export_transcript_srt_words,
             export_transcript_docx,
             export_transcript_pdf,
             export_transcript_bundle,
@@ -1226,6 +1316,7 @@ pub fn run() {
             save_transcript_pdf_file,
             save_transcript_bundle_file,
             save_library_bundle_file,
+            save_burn_in_video,
             start_recording,
             stop_recording,
             get_recording_status,

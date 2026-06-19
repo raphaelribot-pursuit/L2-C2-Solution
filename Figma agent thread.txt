@@ -1,0 +1,511 @@
+Use the Figma plugin in one concrete, useful way that shows why it's valuable in this workspace.
+
+Figma plugin overview
+The Figma plugin connects Cursor to your Figma account through an MCP server plus guided skills. You invoke skills with / (e.g. /figma-generate-diagram), or the agent loads them automatically when relevant.
+
+Skills (workflows)
+Skill	Purpose
+figma-use
+Required before any use_figma call — create/edit nodes, variables, components, auto-layout
+figma-use-figjam / figma-use-slides
+FigJam and Slides-specific API patterns
+figma-create-new-file
+Required before create_new_file — blank Figma/FigJam/Slides files
+figma-generate-diagram
+Required before generate_diagram — Mermaid → editable FigJam diagrams
+figma-generate-design
+Push app pages/screens from code into Figma using your design system
+figma-generate-library
+Build design systems (tokens, components, variants) from a codebase
+figma-code-connect
+Map Figma components to code via .figma.ts / .figma.js files
+figma-swiftui
+SwiftUI ↔ Figma in either direction
+generate-project-plan
+Turn a PRD into a structured FigJam project-plan board
+MCP tools (after auth)
+whoami — your Figma identity and team plan keys
+create_new_file — new Figma/FigJam/Slides files
+generate_diagram — Mermaid syntax → FigJam (creates its own file)
+use_figma — run Plugin API JavaScript inside a file (the power tool for builds/edits)
+Authentication
+The server needed OAuth. That’s now connected to your account (Aisling Leiva-Davila, student tier on your team).
+
+Concrete demo: your workspace, visualized
+I used the plugin on something directly relevant to this workspace: your home-directory Cursor setup with its MCP integrations.
+
+From what’s installed here, I generated a Cursor Workspace MCP Map in FigJam — how you → Cursor Agent → workspace core (files, skills, shell) → MCP plugins (Figma, PostHog, GitLab, Supabase, Context7, Browser) → outputs (diagrams, designs, analytics, code/PRs).
+
+Open it in FigJam: Cursor Workspace MCP Map
+
+Why this is valuable here
+Your workspace root is your home directory, not a single repo — so the agent juggles many tools (640+ skills, 15+ MCP servers). A shareable FigJam map makes that legible: what talks to what, and what each integration produces.
+
+That’s the core value of the plugin in this context:
+
+Describe in chat → get an editable FigJam artifact (not a static image)
+Grounded in your real setup — I used your actual MCP servers and workspace pattern
+Composable — you can extend the board with /generate-project-plan for a PRD, /figma-generate-design to mirror a UI, or use_figma to annotate nodes
+If you want a follow-up on the same board, say the word — e.g. add PostHog error-flow detail, or turn this into a project-plan board for something you’re building.
+
+
+Wisper UI/UX exploratory review
+I read through the project docs and the live UI code (App.tsx, WelcomeGuide.tsx, App.css). This is a synthesis for us to react to together — not a final design spec.
+
+1. What I found (summary)
+Project state
+Area	Finding
+App
+Tauri 2 + React 19 desktop clone of Whisper Notes — local transcription via whisper.cpp
+Version
+0.2.0-beta.23 — core flows + HEART UX refresh largely shipped
+UI code
+Monolithic: ~1,700-line App.tsx, WelcomeGuide.tsx, single App.css
+Window
+960×720, single-column layout, max-width 720px
+Design assets
+No Figma — PRD still has [INSERT FIGMA LINK HERE]
+Documents reviewed
+Document	Role
+docs/Aisling-corrections.md
+Authoritative — reconciles Jimmy’s PRD with shipped reality + HEART plan
+_partner-review/Wisper_Week2_PRD_FINAL_CORRECTED.md
+Jimmy’s guided-first-screen spec (hero, drop zone, analytics)
+docs/Week2-PRD-STATUS.md
+What shipped vs deferred
+ROADMAP.md, CHANGELOG.md, TODO.md
+beta.19–23 delivery history
+docs/TIER3-SIGNOFF.md
+Both partners signed off beta.21 (welcome, tiers, privacy, etc.)
+docs/SLICE-E-F-SCOPE.md
+SRT/VTT + yt-dlp installer (beta.22–23)
+What the docs say vs what’s built
+Aligned and shipped (beta.19–21):
+
+Welcome guide with system check + hardware advisor
+Model tiers (Small / Medium / Large)
+Privacy subtitle on main screen
+Advanced options + “keep open” checkbox
+Disabled-button styling with visible hints
+GPU fallback copy, recording collapses Advanced
+a11y: aria-expanded, Escape to close Advanced
+yt-dlp in-app install (beta.23)
+Jimmy PRD vision not fully realized:
+
+Empty-state hero with a large dashed drop zone (~200px focal area) — still deferred (Slice D)
+Single cohesive hero unit when no transcript is loaded
+Figma sign-off before dev — never happened; beta.18 screenshots became the living mockup
+Your own doc warned about this and it partially happened anyway:
+
+C10: Don’t build two model-download flows — guide first-run, one inline banner when model missing
+Current code has three model-missing surfaces when the guide is closed:
+
+App.tsx
+Lines 1094-1105
+      {modelMissing && !showWelcome && (
+        <section className="panel onboarding" aria-live="polite">
+          <h2>One more step</h2>
+          <p className="guide-lead">
+            Wisper needs a speech model before it can transcribe. Tap Get started and we&apos;ll
+            walk you through a one-time download (~150 MB).
+
+App.tsx
+Lines 1227-1235
+        {modelMissing && !showWelcome && (
+          <div className="model-banner" role="status">
+            <p>
+              Speech model not installed yet. Download once to start transcribing.
+            </p>
+            <button type="button" className="primary" onClick={openWelcomeGuide}>
+              Get started
+Plus Get started in the header. That’s redundant noise on first return without a model.
+
+2. What’s working well (genuine strengths)
+First-run flow is strong. Welcome → system check → model tier → how-to is thoughtful and matches HEART Task Success + Adoption. Hardware advisor is a differentiator vs many Whisper UIs.
+
+Progressive disclosure is the right call. Language, GPU, URL import, and model management behind Advanced keeps the default path simple.
+
+Trust messaging improved. Privacy subtitle + local-only copy in the guide address a real user fear.
+
+Long-job UX is solid. Download → Transcribe steps, progress bars, GPU fallback notices, recording level meter — these are easy to get wrong and you didn’t.
+
+Partner QA passed. Tier 3 sign-off + HEART “explain in <10s” test suggests the information architecture is legible even if the visual design isn’t polished yet.
+
+3. Criticisms (honest UX gaps)
+A. Visual hierarchy — functional, not product-grade
+The UI reads as a well-built developer tool, not a consumer notes app like Whisper Notes. Dark panels, system fonts, equal-weight buttons — everything competes at the same volume. Jimmy’s PRD wanted a focal drop zone; today it’s a one-line hint:
+
+“Drop an audio or video file here, or use the buttons below.”
+
+That’s instruction, not invitation. New users don’t get a clear “this is where you put audio.”
+
+B. YouTube is P0 in README, P2 in the UI
+README says YouTube URL import is P0. In the app, URL import lives inside Advanced options, behind a collapsed panel. That’s a product priority mismatch — your most differentiated flow is buried.
+
+C. Advanced panel is doing too many jobs
+It mixes:
+
+One-time setup (model download, yt-dlp, models folder)
+Per-session prefs (language, GPU)
+Alternate input (URL import)
+Users opening Advanced for language see model paths, download buttons, and yt-dlp — cognitive load Jimmy’s PRD was trying to reduce.
+
+D. Vertical stacking doesn’t scale
+On a 720px-tall window with Advanced open + library + transcript, users scroll a lot. Whisper Notes–style apps often use sidebar library + main transcript on wider layouts. You have 960px width but cap content at 720px — wasted horizontal space.
+
+E. Transcript toolbar is crowded
+Copy · Export TXT · Export SRT · Export VTT · Delete — five actions in one row. At 720px this will wrap awkwardly. Export formats belong in one Export ▾ menu.
+
+F. Copy drift / stale strings
+The onboarding panel still says ~150 MB (Medium only) while the app supports Large (~1.6 GB). Small trust erosion.
+
+G. No design system = iteration tax
+Every UX tweak touches a 1,700-line file and a 900-line stylesheet. That’s why EmptyStateHero keeps getting deferred — the cost of extracting it is high, but the cost of not extracting it is higher now.
+
+H. About dialog is engineer-facing
+release_artifact, Host CPU, GPU → CPU fallback — fine for you and Jimmy, heavy for “privacy-conscious student who wants notes transcribed.”
+
+4. Recommendations (prioritized)
+I’d group changes into three tiers so we can pick what resonates.
+
+Tier 1 — Quick wins (1–2 days, high impact, low risk)
+#	Change	Why	How
+1
+One model-missing CTA
+Fixes C10 violation
+Remove the full onboarding panel or the inner model-banner — keep one compact banner in the transcribe panel
+2
+Tier-aware copy
+Accuracy
+Replace “~150 MB” with “pick a size in Get started” or show selected tier size
+3
+Export dropdown
+Cleaner transcript toolbar
+Single “Export” button → TXT / SRT / VTT submenu
+4
+Promote URL import
+Matches P0 positioning
+Add “Paste URL” as a tertiary action on the main transcribe row (disabled until yt-dlp ready), keep full field in Advanced
+Tier 2 — Structural UX (≈1 week)
+#	Change	Why	How
+5
+EmptyStateHero
+Jimmy PRD + clarity test
+Extract component: dashed drop zone, Record + Choose file inside hero, privacy line, subtle Advanced link
+6
+Split Setup vs Options
+Reduce Advanced overload
+Setup (model, yt-dlp, system check) → welcome guide + small “Settings” entry; Advanced options → language + compute only
+7
+Component extraction
+Sustainable iteration
+TranscribePanel, LibraryPanel, TranscriptPanel, AdvancedPanel, ExportMenu — no behavior change, just structure
+8
+Responsive two-column
+Better use of 960px
+≥800px: library left (240px), transcript right; transcribe hero stays top full-width
+Tier 3 — Design polish (needs your taste + optional Figma)
+#	Change	Why	How
+9
+Visual identity pass
+Whisper Notes parity
+Typography scale, one accent color system, larger primary CTA, softer panel chrome
+10
+Figma source of truth
+Stakeholder alignment
+Use Figma plugin to generate screens from current code, iterate visually, then figma-generate-design back
+11
+Simpler About
+Persona fit
+User-facing: version, privacy, check updates; move technical build info to “Copy debug info”
+5. How I’d implement (if we agree)
+Suggested sequence that won’t fight your infrastructure agent:
+
+Phase A (polish pass)     → Tier 1 items 1–4
+Phase B (hero + structure)→ Tier 2 items 5–7  
+Phase C (layout)          → Tier 2 item 8
+Phase D (visual design)   → Tier 3 — collaborative Figma round
+Phase A is pure frontend — safe to do in parallel with infra work. I’d branch off master, one PR per item, smoke test after each.
+
+Phase B is where we should decide together:
+
+Do you want Jimmy’s big drop zone hero, or a lighter version (larger hit target + icon, no 200px box)?
+Should URL import move to the main panel, or stay Advanced with just a teaser button?
+Phase D is where the Figma plugin earns its keep — I can push the current app to Figma, you and Jimmy react on canvas, then we implement deltas.
+
+6. HEART check on recommendations
+HEART goal	Recommendation that serves it
+Task Success (TTFT)
+Hero drop zone, one model CTA, URL on main panel
+Adoption
+Cleaner first screen, less duplicate onboarding
+Happiness
+Visual polish, simpler About
+Engagement
+Two-column library (discover past transcripts)
+Nothing here adds analytics or file caps — consistent with your locked decisions.
+
+7. Questions for you (let’s decide together)
+Hero ambition: Full Jimmy-style dashed drop zone, or a smaller visual upgrade?
+URL import: Main panel teaser, or keep it Advanced-only?
+Model-missing: Keep the green inline banner only, or the full “One more step” panel?
+Scope for this review cycle: Tier 1 only (safe polish), or commit to EmptyStateHero extraction too?
+Visual direction: Stay dark/utilitarian, or move toward a lighter Whisper Notes feel?
+Tell me which items you agree with, disagree with, or want to reorder — and I can start implementing Tier 1 on a branch, or mock the hero in Figma first if you’d rather see it before code.
+
+
+
+
+
+
+
+
+Visual direction review — Resona → Wisper
+You shared the Resona concept image and the backstory: you built something you loved, were told to pivot to a clone + Week 2 feature, and Resona went dormant. That context matters — you already have a design language worth salvaging, and Wisper already has the feature depth Resona never finished. This review is about merging them.
+
+Part 1 — What Resona contains (and what to borrow)
+Resona project summary
+Asset	Location	Status
+Locked design system
+resona/docs/DESIGN.md
+Deep Current chosen; WCAG AA tokens
+CSS tokens (production)
+resona/src/styles.css
+58 lines — copy-paste ready
+3 HTML mockups
+resona/design/mockups/mockup-{1,2,3}.html
+Phone frames; mockup-2 = chosen direction
+Brand SVGs
+resona/brand/*.svg
+Leaf + soundwave mark
+Concept image
+Your screenshot
+Marketing art — not literal UI per DESIGN.md
+Shipped app
+resona/src/App.tsx (~190 lines)
+Minimal; mockups ahead of code
+Resona vs Wisper — feature split
+Take from Resona	Keep from Wisper (don't rebuild)
+Deep Current color tokens
+SQLite library + search
+Typography scale (30px title, 18px transcript)
+Timestamped segments + edit
+Leaf/wave brand mark (optional rebrand)
+URL/yt-dlp import
+Waveform visual language
+Welcome guide + hardware advisor
+Privacy lock-line pattern
+GPU backends + fallback
+Panel radius (14px), mint primary buttons
+SRT/VTT export, update checker
+"Voice → Text → …" step breadcrumb
+Multi-model tier system
+Resona-only (defer unless you want scope creep)
+Live streaming dictation + partial transcripts
+Grammar review / filler removal / writing score
+Pro paywall / freemium tiers
+Important from DESIGN.md: Jimmy and the docs explicitly say the photographic concept image is not shipped literally — text on photos fails WCAG. Direction B (Living Surface) captures the feeling via gradient + waveform, not forest photography.
+
+Part 2 — Your decisions + Resona alignment
+You confirmed:
+
+Decision	Resona fit
+Full Jimmy drop zone
+Resona mockups use waveform center, not drop zone — we add Jimmy's hero to Resona skin
+URL on main panel
+Resona never had this; Wisper README says P0 — correct call
+Full model-missing panel
+Matches Resona's calm "one job" panels; remove the duplicate green inline banner
+EmptyStateHero extraction
+Required for any Resona visual refresh
+Resona visual direction
+Deep Current is the natural default (mockup-2)
+Part 3 — Three mockup directions (open in browser)
+I created desktop 960×720 mockups with tab switches for Empty hero · Model missing · With transcript:
+
+Direction	File	Vibe
+A — Deep Current ⭐
+wisper/design/mockups/direction-a-deep-current.html
+Resona dark tokens + Jimmy hero + URL row + 2-col library
+B — Living Surface
+wisper/design/mockups/direction-b-living-surface.html
+Gradient header + waveform (closest to your concept image)
+C — Daylight
+wisper/design/mockups/direction-c-daylight.html
+Light theme — classroom-friendly, Whisper Notes–adjacent
+Open any file in Chrome/Edge and click the tabs at the top to compare states.
+
+My recommendation: Direction A (Deep Current)
+Criterion	A	B	C
+Matches Resona DESIGN.md
+✅ Locked choice
+⚠️ Expressive variant
+Different theme
+WCAG AA safe
+✅
+✅ (content on solid cards)
+✅
+Desktop-native feel
+✅
+⚠️ Mobile-origin layout
+✅
+Engineering cost
+Low
+Medium (header component)
+Low
+Matches your concept image mood
+Good
+Best
+Different
+Fits existing Wisper dark app
+✅ Easiest migration
+Bigger leap
+Full retheme
+If you love the concept image most: pick B for the hero header, but keep transcript/library on solid panels (as mockup shows).
+
+If Jimmy/partners need max readability: C as light-mode option later.
+
+Part 4 — What changes in Wisper (final implementation plan)
+Assuming you OK Direction A (adjust if you pick B/C):
+
+Phase A — Structure (your confirmed scope)
+Task	Detail
+Extract EmptyStateHero.tsx
+200px dashed drop zone, Record/Choose/Transcribe, drag-over state, privacy line
+URL on main panel
+Row below hero: input + "Download & transcribe"
+Model-missing: full panel only
+Keep setup-panel; delete inner model-banner duplicate
+Remove triple CTA
+One path: full panel → setup guide
+Export dropdown
+Replace 3 export buttons with Export ▾
+tokens.css
+Port Resona :root vars from styles.css
+Phase B — Visual reskin (Resona Deep Current)
+Task	Detail
+Replace Wisper greens (#2d6a4f) with Resona mint (#5FD3A0)
+Background #04171C, panels #0E323E, hairlines #1C4350
+Typography: 28px title, 12px descriptor, 11px uppercase panel labels
+Optional: copy resona/brand/resona-appmark.svg → adapt for Wisper mark
+Welcome guide: reskin to match tokens (same flow, new skin)
+Phase C — Layout (after A+B validated)
+Task	Detail
+Two-column at ≥800px: library left, transcript right
+Split Advanced: Setup (model, yt-dlp) vs Options (language, GPU) — later slice
+Explicitly NOT in this cycle
+Resona grammar/filler/scoring layer
+Photographic backgrounds from concept art
+Live streaming dictation
+Rebrand to "Resona" (unless you say so — mockups say Wisper)
+Part 5 — Criticisms / honest notes
+Resona was ahead on design, behind on product — Wisper is the opposite. Merging them is the right instinct; don't throw away either.
+
+The concept image sets a high bar — Direction B gets close in mood without the accessibility problems. Don't try to ship the photo composite.
+
+Current Wisper has copy bugs — "~150 MB" in onboarding panel is stale; three model-missing surfaces is confusing. Phase A fixes this regardless of visual direction.
+
+App.tsx at 1,700 lines — EmptyStateHero extraction is the wedge for sustainable UI work. Do it first.
+
+No Figma yet — These HTML mockups become your sign-off artifact (same workflow Resona used). We can push to Figma after you pick a direction.
+
+Part 6 — What I need from you to move forward
+Please reply with:
+
+Visual direction: A, B, or C (or hybrid: e.g. "A tokens + B gradient header")
+Brand: Keep "Wisper" name, or revisit Resona branding?
+OK on Phase A + B as the first implementation batch?
+Once you OK, I'll implement Phase A (EmptyStateHero, URL panel, model-missing cleanup, tokens) on a branch — visual reskin in the same pass if you pick a direction now.
+
+
+
+
+
+Hybrid mockup + docs updated
+Your A + B hybrid mockup
+Open this in Chrome or Edge (best reference — interactive tabs):
+
+wisper/design/mockups/direction-ab-hybrid.html
+
+It combines:
+
+A — Deep Current tokens (#04171C bg, mint #5FD3A0, solid panels)
+B — Gradient header + waveform strip (Living Surface, no photo backgrounds)
+Your zip — Leaf + soundwave appmark from Downloads/files.zip
+Your UX picks — Full Jimmy drop zone, URL on main panel, full model-missing panel
+Tabs: Empty hero · Model missing · With transcript
+
+A static preview image was also generated above.
+
+From files.zip
+Extracted to wisper/design/brainstorm-import/:
+
+Contents	Notes
+mockup-1-daylight.html
+Light theme (phone frame)
+mockup-2-deepcurrent.html
+Deep Current (phone) — same as Resona repo
+mockup-3-livingsurface.html
+Gradient header (phone)
+resona.zip → brand assets
+SVG + PNG appmark copied to wisper/design/brand/
+Rebrand: Resona
+Draft in the hybrid mockup:
+
+Element	Draft
+Name
+Resona.
+Tagline
+a private whisper
+Alternatives to consider with Jimmy:
+
+a private whisper (current mockup) — ties to Whisper Notes clone origin
+private voice-to-text — Resona DESIGN.md default
+Voice → Text · on your device — functional, HEART-friendly
+Internal code (wisper-core, Tauri identifier) can stay as-is until a dedicated rename slice — noted in planning doc.
+
+Phase A + B — not started
+Implementation stays blocked until you give explicit OK after reviewing the hybrid mockup.
+
+Documents updated
+File	What changed
+docs/RESONA-VISUAL-REDESIGN.md
+New — master planning doc (brand, phases, mockup index, deferred features)
+ROADMAP.md
+Slice UX (pending OK) + Slice H (Resona polish deferred)
+TODO.md
+Slice UX tasks (UX-A/B/C) + Slice H (H1–H5)
+README.md
+Link to visual redesign doc
+docs/SLICE-E-F-SCOPE.md
+Deferred Resona features + Slice UX pointer
+docs/Week2-PRD-STATUS.md
+EmptyStateHero → Slice UX; Slice H listed
+docs/Aisling-corrections.md
+Slice D + new Slice H table
+Slice H — explicitly deferred (as requested)
+ID	Feature	Resona source
+H1
+Live streaming dictation
+streaming.rs, vad.rs
+H2
+Partial transcript UI
+transcript://partial events
+H3
+Grammar review
+grammar.ts
+H4
+Filler word removal
+grammar + UI
+H5
+Writing score
+review metrics block
+These ship after Slice UX (Phase A + B), not with the visual redesign.
+
+What to review before OK
+Open direction-ab-hybrid.html — click all three tabs
+Compare with direction-a, direction-b, direction-c if you want side-by-side
+Check wisper/design/brand/resona-appmark.svg (and .png) — icon for Tauri later
+Pick a tagline (or suggest your own)
+Reply OK (or edits) when ready for Phase A + B implementation
+No code changes to the app yet — planning and mockups only.

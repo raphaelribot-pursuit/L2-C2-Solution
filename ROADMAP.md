@@ -1,6 +1,6 @@
-# Wisper — Roadmap
+# Wisper / Resona — Roadmap
 
-Last updated: 2026-06-19 (`master` / beta.21 shipped; E+F scoped)
+Last updated: 2026-06-19 (`master` / beta.23+; Resona visual redesign in planning)
 
 ## Current phase
 
@@ -17,7 +17,8 @@ Last updated: 2026-06-19 (`master` / beta.21 shipped; E+F scoped)
 | **Slice F — yt-dlp in-app installer → beta.23** | Planned |
 
 **Authoritative plan:** [docs/Aisling-corrections.md](./docs/Aisling-corrections.md)  
-**PRD status map:** [docs/Week2-PRD-STATUS.md](./docs/Week2-PRD-STATUS.md)
+**PRD status map:** [docs/Week2-PRD-STATUS.md](./docs/Week2-PRD-STATUS.md)  
+**Visual redesign (Resona merge):** [docs/RESONA-VISUAL-REDESIGN.md](./docs/RESONA-VISUAL-REDESIGN.md) — **pending Aisling OK**
 
 ## HEART focus (beta.19–20)
 
@@ -62,9 +63,41 @@ Export edited transcript segments as standard subtitle files for video editors a
 
 One-click download of official yt-dlp into app data so URL import works without winget/Homebrew.
 
-## Deferred (post beta.23)
+## Slice UX — Resona visual redesign (post beta.24, **pending OK**)
+
+**Planning doc:** [docs/RESONA-VISUAL-REDESIGN.md](./docs/RESONA-VISUAL-REDESIGN.md)  
+**Mockups:** `wisper/design/mockups/direction-ab-hybrid.html` (A + B hybrid, selected)
+
+| Phase | Deliverable | Status |
+|-------|-------------|--------|
+| **Review** | Hybrid mockup + tagline “a private whisper” | **Approved** |
+| **Phase A** | EmptyStateHero, URL on main panel, model-missing full panel, export dropdown, tokens.css | **In progress** |
+| **Phase B** | Deep Current + gradient header reskin, Resona rebrand in UI | **In progress** |
+| **Phase C** | Two-column layout, Advanced split | After A + B |
+
+**Brand:** Revisit **Resona** (user-facing); internal crate/package rename TBD.
+
+---
+
+## Slice H — Resona polish layer (deferred, post Slice UX)
+
+Features from the original Resona app (`L2 project 1 Resona/resona/`). **Not** in the visual redesign slice.
+
+| Feature | Description |
+|---------|-------------|
+| **Live streaming dictation** | Real-time mic → partial/final transcript events (`streaming.rs`, `vad.rs`) |
+| **Partial transcripts** | Live updating text while speaking (`transcript://partial`) |
+| **Grammar review** | Local pass: capitalization, punctuation, duplicate words (`grammar.ts`) |
+| **Filler word removal** | Strip um/uh/you know after transcribe |
+| **Writing score** | Grammar, conciseness, readability, clarity metrics + issue list |
+
+**Prerequisite:** Slice UX (Phase A + B) shipped; HEART Task Success still green.  
+**Track in:** [TODO.md](./TODO.md) Slice H.
+
+---
+
+## Deferred (other, post beta.23)
 
 - Pin Advanced Option C (Tauri prefs + pin icon)  
 - Full analytics / PostHog  
-- EmptyStateHero refactor  
-- Batch export / burn-in subtitles / ffmpeg in-app (see SLICE-E-F-SCOPE out-of-scope)
+- Batch export / burn-in subtitles (see SLICE-E-F-SCOPE out-of-scope)

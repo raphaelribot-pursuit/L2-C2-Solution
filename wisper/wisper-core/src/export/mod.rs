@@ -1,4 +1,4 @@
-use crate::transcribe::TranscriptSegment;
+use crate::transcribe::{TranscriptSegment, TranscriptWord};
 
 mod bundle;
 mod docx;
@@ -7,6 +7,15 @@ mod pdf;
 pub use bundle::{build_library_bundle, build_transcript_bundle, TranscriptExportSet};
 pub use docx::format_transcript_docx;
 pub use pdf::format_transcript_pdf;
+
+fn subtitle_text(seg: &TranscriptSegment) -> String {
+    let text = seg.text.trim();
+    if let Some(speaker) = seg.speaker.as_deref() {
+        format!("{speaker}: {text}")
+    } else {
+        text.to_string()
+    }
+}
 
 fn format_timestamp_hms(ms: i64) -> (u64, u64, u64, u64) {
     let ms = ms.max(0) as u64;
@@ -39,8 +48,8 @@ pub fn format_transcript_txt(segments: &[TranscriptSegment]) -> String {
     segments
         .iter()
         .filter_map(|seg| {
-            let text = seg.text.trim();
-            if text.is_empty() {
+            let text = subtitle_text(seg);
+            if text.trim().is_empty() {
                 return None;
             }
             Some(format!(
@@ -59,8 +68,8 @@ pub fn format_transcript_srt(segments: &[TranscriptSegment]) -> String {
     let mut index = 1usize;
     let mut blocks = Vec::new();
     for seg in segments {
-        let text = seg.text.trim();
-        if text.is_empty() {
+        let text = subtitle_text(seg);
+        if text.trim().is_empty() {
             continue;
         }
         blocks.push(format!(
@@ -73,12 +82,54 @@ pub fn format_transcript_srt(segments: &[TranscriptSegment]) -> String {
     blocks.join("\n\n")
 }
 
+/// Word-level SubRip (.srt): one cue per timed word when word data is available.
+pub fn format_transcript_srt_words(segments: &[TranscriptSegment]) -> String {
+    let mut index = 1usize;
+    let mut blocks = Vec::new();
+
+    for seg in segments {
+        let Some(words) = seg.words.as_ref() else {
+            let text = subtitle_text(seg);
+            if text.trim().is_empty() {
+                continue;
+            }
+            blocks.push(format!(
+                "{index}\n{} --> {}\n{text}",
+                format_srt_timestamp(seg.start_ms),
+                format_srt_timestamp(seg.end_ms),
+            ));
+            index += 1;
+            continue;
+        };
+
+        for word in words {
+            let text = word.text.trim();
+            if text.is_empty() {
+                continue;
+            }
+            let label = seg
+                .speaker
+                .as_deref()
+                .map(|speaker| format!("{speaker}: {text}"))
+                .unwrap_or_else(|| text.to_string());
+            blocks.push(format!(
+                "{index}\n{} --> {}\n{label}",
+                format_srt_timestamp(word.start_ms),
+                format_srt_timestamp(word.end_ms.max(word.start_ms + 1)),
+            ));
+            index += 1;
+        }
+    }
+
+    blocks.join("\n\n")
+}
+
 /// WebVTT (.vtt): header plus `HH:MM:SS.mmm` cues.
 pub fn format_transcript_vtt(segments: &[TranscriptSegment]) -> String {
     let mut cues: Vec<String> = Vec::new();
     for seg in segments {
-        let text = seg.text.trim();
-        if text.is_empty() {
+        let text = subtitle_text(seg);
+        if text.trim().is_empty() {
             continue;
         }
         cues.push(format!(
@@ -122,20 +173,56 @@ fn csv_cell(value: &str) -> String {
     }
 }
 
-/// CSV export: `start_ms,end_ms,text` header plus one row per non-empty segment.
+/// CSV export: `start_ms,end_ms,speaker,text` header plus one row per non-empty segment.
 pub fn format_transcript_csv(segments: &[TranscriptSegment]) -> String {
-    let mut lines = vec!["start_ms,end_ms,text".to_string()];
+    let mut lines = vec!["start_ms,end_ms,speaker,text".to_string()];
     for seg in segments {
         let text = seg.text.trim();
         if text.is_empty() {
             continue;
         }
         lines.push(format!(
-            "{},{},{}",
+            "{},{},{},{}",
             seg.start_ms,
             seg.end_ms,
+            csv_cell(seg.speaker.as_deref().unwrap_or("")),
             csv_cell(text)
         ));
+    }
+    lines.join("\n")
+}
+
+/// CSV export with one row per timed word when available.
+pub fn format_transcript_csv_words(segments: &[TranscriptSegment]) -> String {
+    let mut lines = vec!["start_ms,end_ms,speaker,word".to_string()];
+    for seg in segments {
+        if let Some(words) = seg.words.as_ref() {
+            for word in words {
+                let text = word.text.trim();
+                if text.is_empty() {
+                    continue;
+                }
+                lines.push(format!(
+                    "{},{},{},{}",
+                    word.start_ms,
+                    word.end_ms,
+                    csv_cell(seg.speaker.as_deref().unwrap_or("")),
+                    csv_cell(text)
+                ));
+            }
+        } else {
+            let text = seg.text.trim();
+            if text.is_empty() {
+                continue;
+            }
+            lines.push(format!(
+                "{},{},{},{}",
+                seg.start_ms,
+                seg.end_ms,
+                csv_cell(seg.speaker.as_deref().unwrap_or("")),
+                csv_cell(text)
+            ));
+        }
     }
     lines.join("\n")
 }
@@ -172,13 +259,19 @@ mod tests {
             start_ms: 0,
             end_ms: 1500,
             text: "Hello".into(),
+            speaker: Some("Speaker 1".into()),
+            words: Some(vec![TranscriptWord {
+                start_ms: 0,
+                end_ms: 700,
+                text: "Hello".into(),
+            }]),
         }
     }
 
     #[test]
     fn format_transcript_txt_includes_timestamps() {
         let text = format_transcript_txt(&[sample_segment()]);
-        assert!(text.contains("[0:00 – 0:01] Hello"));
+        assert!(text.contains("[0:00 – 0:01] Speaker 1: Hello"));
     }
 
     #[test]
@@ -203,6 +296,8 @@ mod tests {
             start_ms: 2000,
             end_ms: 3000,
             text: "   ".into(),
+            speaker: None,
+            words: None,
         };
         assert!(format_transcript_srt(&[empty.clone()]).is_empty());
         assert!(format_transcript_vtt(&[empty]).is_empty());
@@ -214,6 +309,8 @@ mod tests {
             start_ms: 3_661_500,
             end_ms: 3_662_000,
             text: "Late".into(),
+            speaker: None,
+            words: None,
         };
         let text = format_transcript_srt(&[seg]);
         assert!(text.contains("01:01:01,500 --> 01:01:02,000"));
@@ -229,10 +326,23 @@ mod tests {
     }
 
     #[test]
-    fn csv_has_header_and_row() {
+    fn srt_includes_speaker_prefix() {
+        let text = format_transcript_srt(&[sample_segment()]);
+        assert!(text.contains("Speaker 1: Hello"));
+    }
+
+    #[test]
+    fn word_level_srt_emits_per_word_cues() {
+        let text = format_transcript_srt_words(&[sample_segment()]);
+        assert!(text.contains("00:00:00,000 --> 00:00:00,700"));
+        assert!(text.contains("Speaker 1: Hello"));
+    }
+
+    #[test]
+    fn csv_has_speaker_column() {
         let csv = format_transcript_csv(&[sample_segment()]);
-        assert!(csv.starts_with("start_ms,end_ms,text"));
-        assert!(csv.contains("0,1500,Hello"));
+        assert!(csv.starts_with("start_ms,end_ms,speaker,text"));
+        assert!(csv.contains("Speaker 1"));
     }
 
     #[test]

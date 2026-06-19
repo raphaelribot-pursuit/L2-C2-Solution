@@ -54,7 +54,20 @@
 - File size limits
 - PostHog / analytics suite
 - Pin Advanced (Option C)
-- EmptyStateHero refactor
+
+### Resona polish layer (Slice H — post visual redesign)
+
+Tracked in [RESONA-VISUAL-REDESIGN.md](./RESONA-VISUAL-REDESIGN.md) and [ROADMAP.md](../ROADMAP.md):
+
+- Live streaming dictation + partial transcripts
+- Grammar review / filler removal / writing score
+
+Source: `L2 project 1 Resona/resona/` — **not** in Slice UX scope.
+
+### Visual redesign (Slice UX — pending OK)
+
+- EmptyStateHero + Resona rebrand — see [RESONA-VISUAL-REDESIGN.md](./RESONA-VISUAL-REDESIGN.md)
+- Mockups: `wisper/design/mockups/direction-ab-hybrid.html`
 
 ---
 

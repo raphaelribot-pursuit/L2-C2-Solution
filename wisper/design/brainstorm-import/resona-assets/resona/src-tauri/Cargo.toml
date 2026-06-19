@@ -1,0 +1,29 @@
+[package]
+name = "resona"
+version = "0.1.0"
+authors = ["Aisling Leiva <aisling.ld@pursuit.org>", "Jimmy Ong <jimmy.ong@pursuit.org>"]
+description = "Local-first voice-to-text with live dictation and grammar review"
+edition = "2021"
+
+[lib]
+name = "resona_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Rust bindings to whisper.cpp. Verify the newest version with `cargo add whisper-rs`.
+# Enable a GPU backend feature for production speed, e.g. features = ["metal"] on macOS,
+# ["cuda"] on NVIDIA, ["vulkan"] cross-platform. Default builds CPU-only.
+whisper-rs = "0.16"
+cpal = "0.15"
+anyhow = "1"
+parking_lot = "0.12"
+
+[profile.release]
+opt-level = 3
+lto = true

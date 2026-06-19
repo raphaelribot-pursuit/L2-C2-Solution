@@ -54,9 +54,18 @@ Partial Week 2 delivery = **beta.15 + beta.17–18**. Remaining UX is **beta.19�
 
 - Pin icon + Tauri prefs file (Option C)
 - Full analytics / PostHog
-- EmptyStateHero extract
+- EmptyStateHero extract → **moved to Slice UX** ([RESONA-VISUAL-REDESIGN.md](./RESONA-VISUAL-REDESIGN.md))
 - Language confidence banner
 - Figma hard gate
+
+### Resona polish layer (Slice H — post Slice UX)
+
+From original Resona project; **not** in visual redesign:
+
+- Live streaming dictation + partial transcripts
+- Grammar review / filler removal / writing score
+
+See [ROADMAP.md](../ROADMAP.md) Slice H, [TODO.md](../TODO.md) Slice H.
 
 ## Stakeholder HEART summary
 

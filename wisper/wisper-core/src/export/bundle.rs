@@ -127,6 +127,8 @@ mod tests {
             start_ms: 0,
             end_ms: 500,
             text: "Hi".into(),
+            speaker: None,
+            words: None,
         }
     }
 

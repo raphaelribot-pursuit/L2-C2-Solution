@@ -5765,7 +5765,7 @@ dependencies = [
 
 [[package]]
 name = "wisper"
-version = "0.2.0-beta.27"
+version = "0.2.0-beta.28"
 dependencies = [
  "cpal",
  "serde",
@@ -5780,7 +5780,7 @@ dependencies = [
 
 [[package]]
 name = "wisper-core"
-version = "0.2.0-beta.27"
+version = "0.2.0-beta.28"
 dependencies = [
  "hound",
  "rusqlite",

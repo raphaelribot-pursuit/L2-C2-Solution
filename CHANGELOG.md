@@ -5,6 +5,16 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0-beta.28] - 2026-06-08
+
+### Added
+
+- **Word-level timing** — per-word timestamps from whisper tokens; word-level SRT/CSV export; hover timings in the transcript list.
+- **Speaker turns** — experimental tinydiarize labels (`Speaker 1`, `Speaker 2`, …) on new transcriptions; shown in exports and the transcript UI.
+- **Burn-in subtitles** — render segment subtitles into a new MP4 for imported video when ffmpeg is installed.
+
+**Tag `v0.2.0-beta.28`** — subtitles++. See [docs/SLICE-K-SCOPE.md](./docs/SLICE-K-SCOPE.md).
+
 ## [0.2.0-beta.27] - 2026-06-08
 
 ### Added
