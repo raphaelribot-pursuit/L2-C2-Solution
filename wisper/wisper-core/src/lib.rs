@@ -54,6 +54,7 @@ pub use transcribe::{
 };
 pub use video::{burn_in_subtitles, is_video_path};
 pub use managed_binary::{ffmpeg_runnable, prepare_managed_binary, yt_dlp_runnable};
+pub use update::{check_for_update, UpdateCheckResult, GITHUB_REPO};
 
 /// Default model filename (user downloads to app data dir on first run).
 pub const DEFAULT_MODEL_FILENAME: &str = "ggml-large-v3-turbo.bin";
