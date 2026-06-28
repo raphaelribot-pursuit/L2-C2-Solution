@@ -45,5 +45,15 @@ CREATE TABLE IF NOT EXISTS audit_log (
   prev_hash    TEXT NOT NULL,            -- entry_hash of seq-1 ('' for the first entry)
   entry_hash   TEXT NOT NULL
 );
+
+-- Out-of-band head anchor — catches tail-truncation (rows deleted from the END of audit_log,
+-- which the per-row chain alone cannot detect). A naive DB edit must now also forge this row.
+-- ponytail: single-DB anchor raises the bar; true tamper-proofing signs/anchors it externally (v2).
+CREATE TABLE IF NOT EXISTS audit_head (
+  id         INTEGER PRIMARY KEY CHECK (id = 1),
+  count      INTEGER NOT NULL,
+  last_hash  TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_versions_record ON record_versions(record_id);
 CREATE INDEX IF NOT EXISTS idx_audit_record    ON audit_log(record_id);

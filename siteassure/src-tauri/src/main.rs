@@ -21,11 +21,14 @@ fn main() {
             recorder: Mutex::new(None),
         })
         .setup(|app| {
-            // First-run: ensure the staged-model + retained-audio dirs exist under app data.
+            // First-run: ensure the app-data dir + staged-model + retained-audio dirs exist.
             let data = app.path().app_data_dir()?;
+            std::fs::create_dir_all(&data).ok();
             std::fs::create_dir_all(data.join("models")).ok();
             std::fs::create_dir_all(data.join("audio")).ok();
-            // TODO(Phase 2): db::init(app) — open SQLite under app data + apply db/schema.sql.
+            // Open SQLite + apply schema; manage the connection for the record/audit commands.
+            let conn = db::open(&data.join("siteassure.db")).map_err(std::io::Error::other)?;
+            app.manage(db::Db(std::sync::Mutex::new(conn)));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

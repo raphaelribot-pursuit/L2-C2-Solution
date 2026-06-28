@@ -133,16 +133,17 @@ pub fn stop_recording(
     Ok(result.path.to_string_lossy().into_owned())
 }
 
-// ── Phase 2/3/5 stubs (kept on-contract; bodies land with persistence + audit) ──────────────
+// ── Records + audit (Phase 2). amend_record lands in Phase 5. ───────────────────────────────
 
 /// 03 Confirm & save: persist a new record (version 1) + write the 'create' audit entry.
 #[tauri::command]
-pub async fn save_record(rec: NewRecord) -> Result<String, String> {
-    let _ = rec;
-    Err("not implemented".into())
+pub fn save_record(db: tauri::State<'_, crate::db::Db>, rec: NewRecord) -> Result<String, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let now = chrono::Utc::now().to_rfc3339();
+    crate::db::save_record(&conn, &rec, &now)
 }
 
-/// 05 Amend: new version (prior preserved) + 'amend' audit entry. Reason required.
+/// 05 Amend: new version (prior preserved) + 'amend' audit entry. Reason required. (Phase 5)
 #[tauri::command]
 pub async fn amend_record(id: String, changes: serde_json::Value, reason: String) -> Result<i64, String> {
     let _ = (id, changes, reason);
@@ -151,13 +152,14 @@ pub async fn amend_record(id: String, changes: serde_json::Value, reason: String
 
 /// 05 Record view: full record + version history + audit-verify result.
 #[tauri::command]
-pub async fn get_record(id: String) -> Result<RecordWithHistory, String> {
-    let _ = id;
-    Err("not implemented".into())
+pub fn get_record(db: tauri::State<'_, crate::db::Db>, id: String) -> Result<RecordWithHistory, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    crate::db::get_record(&conn, &id)
 }
 
 /// 01 Home / Records list.
 #[tauri::command]
-pub async fn list_records() -> Result<Vec<serde_json::Value>, String> {
-    Err("not implemented".into())
+pub fn list_records(db: tauri::State<'_, crate::db::Db>) -> Result<Vec<serde_json::Value>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    crate::db::list_records(&conn)
 }
