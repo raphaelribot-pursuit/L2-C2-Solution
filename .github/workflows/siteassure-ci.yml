@@ -41,10 +41,11 @@ jobs:
       - name: Frontend tests (vitest)
         run: npm test
 
+      # -p siteassure: lint OUR crate only. wisper-core is vendored upstream — built, not gated on.
       - name: Clippy
         working-directory: siteassure/src-tauri
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy -p siteassure --all-targets -- -D warnings
 
       - name: Rust tests (audit chain + units)
         working-directory: siteassure/src-tauri
-        run: cargo test
+        run: cargo test -p siteassure
