@@ -24,9 +24,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo install cargo-audit --locked
       - name: cargo audit
-        working-directory: siteassure/src-tauri
+        working-directory: siteassure
         run: |
-          cargo generate-lockfile || true
+          cargo generate-lockfile
           cargo audit
 
   deps-npm:
