@@ -40,7 +40,8 @@ jobs:
         working-directory: siteassure
         run: |
           npm install --package-lock-only
-          npm audit --audit-level=high
+          # --omit=dev: audit only shipped deps. Build tooling (vite/vitest/esbuild) never ships.
+          npm audit --omit=dev --audit-level=high
 
   sast:
     runs-on: ubuntu-latest
@@ -50,7 +51,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install semgrep
-      - run: semgrep --error --config p/rust --config p/typescript --config p/secrets siteassure
+      # Gate on OUR code only; --exclude vendored wisper-core (upstream). Secrets are covered by gitleaks.
+      - run: semgrep --error --config p/rust --config p/typescript --exclude wisper-core siteassure
 
   app-invariants:
     runs-on: ubuntu-latest
