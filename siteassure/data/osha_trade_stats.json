@@ -1,0 +1,323 @@
+{
+  "meta": {
+    "source": "DOL Open Data API \u2014 OSHA enforcement (inspection + violation, joined on activity_nr)",
+    "naics": "23x (construction)",
+    "states": [
+      "NY",
+      "NJ"
+    ],
+    "msa": "New York-Newark-Jersey City, NY-NJ (22 counties, post-2023 OMB)",
+    "window": [
+      "2024-06-25",
+      "2026-06-18"
+    ],
+    "generated_utc": "2026-06-27T19:58:39Z",
+    "in_msa_inspections": 3124,
+    "cited": 1247,
+    "cited_rate": 0.3992,
+    "total_penalty": 15051267,
+    "caveat": "Citation rate is depressed by recency: citations lag inspections by months, so recently-opened inspections read as not-yet-cited. Mature inspections (opened > ~1yr ago) run materially higher. Treat the rate as a floor. Rates are event counts (% of inspections cited), not normalized by workforce."
+  },
+  "trades": {
+    "238160": {
+      "name": "Roofing",
+      "inspections": 491,
+      "cited": 283,
+      "cited_rate": 0.5764,
+      "total_penalty": 3297681,
+      "avg_penalty_per_cited": 11653,
+      "repeat_citations": 48,
+      "small_sample": false
+    },
+    "238130": {
+      "name": "Framing",
+      "inspections": 351,
+      "cited": 201,
+      "cited_rate": 0.5726,
+      "total_penalty": 2802703,
+      "avg_penalty_per_cited": 13944,
+      "repeat_citations": 64,
+      "small_sample": false
+    },
+    "237310": {
+      "name": "Highway/Bridge",
+      "inspections": 282,
+      "cited": 116,
+      "cited_rate": 0.4113,
+      "total_penalty": 2521644,
+      "avg_penalty_per_cited": 21738,
+      "repeat_citations": 7,
+      "small_sample": false
+    },
+    "238140": {
+      "name": "Masonry",
+      "inspections": 262,
+      "cited": 133,
+      "cited_rate": 0.5076,
+      "total_penalty": 1387773,
+      "avg_penalty_per_cited": 10434,
+      "repeat_citations": 11,
+      "small_sample": false
+    },
+    "236220": {
+      "name": "Commercial Bldg",
+      "inspections": 248,
+      "cited": 47,
+      "cited_rate": 0.1895,
+      "total_penalty": 323039,
+      "avg_penalty_per_cited": 6873,
+      "repeat_citations": 2,
+      "small_sample": false
+    },
+    "238220": {
+      "name": null,
+      "inspections": 149,
+      "cited": 36,
+      "cited_rate": 0.2416,
+      "total_penalty": 308589,
+      "avg_penalty_per_cited": 8572,
+      "repeat_citations": 0,
+      "small_sample": false
+    },
+    "236116": {
+      "name": null,
+      "inspections": 145,
+      "cited": 29,
+      "cited_rate": 0.2,
+      "total_penalty": 273348,
+      "avg_penalty_per_cited": 9426,
+      "repeat_citations": 2,
+      "small_sample": false
+    },
+    "238170": {
+      "name": null,
+      "inspections": 142,
+      "cited": 91,
+      "cited_rate": 0.6408,
+      "total_penalty": 811305,
+      "avg_penalty_per_cited": 8915,
+      "repeat_citations": 13,
+      "small_sample": false
+    },
+    "236118": {
+      "name": null,
+      "inspections": 126,
+      "cited": 45,
+      "cited_rate": 0.3571,
+      "total_penalty": 382525,
+      "avg_penalty_per_cited": 8501,
+      "repeat_citations": 4,
+      "small_sample": false
+    },
+    "238210": {
+      "name": null,
+      "inspections": 111,
+      "cited": 31,
+      "cited_rate": 0.2793,
+      "total_penalty": 204330,
+      "avg_penalty_per_cited": 6591,
+      "repeat_citations": 0,
+      "small_sample": false
+    },
+    "238110": {
+      "name": null,
+      "inspections": 108,
+      "cited": 32,
+      "cited_rate": 0.2963,
+      "total_penalty": 408392,
+      "avg_penalty_per_cited": 12762,
+      "repeat_citations": 0,
+      "small_sample": false
+    },
+    "238990": {
+      "name": null,
+      "inspections": 107,
+      "cited": 28,
+      "cited_rate": 0.2617,
+      "total_penalty": 318707,
+      "avg_penalty_per_cited": 11382,
+      "repeat_citations": 0,
+      "small_sample": false
+    },
+    "236115": {
+      "name": null,
+      "inspections": 92,
+      "cited": 39,
+      "cited_rate": 0.4239,
+      "total_penalty": 271501,
+      "avg_penalty_per_cited": 6962,
+      "repeat_citations": 3,
+      "small_sample": false
+    },
+    "238910": {
+      "name": null,
+      "inspections": 76,
+      "cited": 28,
+      "cited_rate": 0.3684,
+      "total_penalty": 353673,
+      "avg_penalty_per_cited": 12631,
+      "repeat_citations": 5,
+      "small_sample": false
+    },
+    "238350": {
+      "name": null,
+      "inspections": 57,
+      "cited": 13,
+      "cited_rate": 0.2281,
+      "total_penalty": 173262,
+      "avg_penalty_per_cited": 13328,
+      "repeat_citations": 1,
+      "small_sample": false
+    },
+    "238120": {
+      "name": null,
+      "inspections": 56,
+      "cited": 14,
+      "cited_rate": 0.25,
+      "total_penalty": 114041,
+      "avg_penalty_per_cited": 8146,
+      "repeat_citations": 1,
+      "small_sample": false
+    },
+    "238320": {
+      "name": null,
+      "inspections": 45,
+      "cited": 14,
+      "cited_rate": 0.3111,
+      "total_penalty": 95724,
+      "avg_penalty_per_cited": 6837,
+      "repeat_citations": 0,
+      "small_sample": false
+    },
+    "238310": {
+      "name": null,
+      "inspections": 44,
+      "cited": 13,
+      "cited_rate": 0.2955,
+      "total_penalty": 76828,
+      "avg_penalty_per_cited": 5910,
+      "repeat_citations": 0,
+      "small_sample": false
+    },
+    "237110": {
+      "name": null,
+      "inspections": 34,
+      "cited": 7,
+      "cited_rate": 0.2059,
+      "total_penalty": 85226,
+      "avg_penalty_per_cited": 12175,
+      "repeat_citations": 0,
+      "small_sample": false
+    },
+    "238190": {
+      "name": null,
+      "inspections": 34,
+      "cited": 6,
+      "cited_rate": 0.1765,
+      "total_penalty": 70558,
+      "avg_penalty_per_cited": 11760,
+      "repeat_citations": 2,
+      "small_sample": false
+    },
+    "238390": {
+      "name": null,
+      "inspections": 25,
+      "cited": 11,
+      "cited_rate": 0.44,
+      "total_penalty": 559516,
+      "avg_penalty_per_cited": 50865,
+      "repeat_citations": 1,
+      "small_sample": false
+    },
+    "238330": {
+      "name": null,
+      "inspections": 23,
+      "cited": 4,
+      "cited_rate": 0.1739,
+      "total_penalty": 21238,
+      "avg_penalty_per_cited": 5310,
+      "repeat_citations": 0,
+      "small_sample": false
+    },
+    "238150": {
+      "name": null,
+      "inspections": 21,
+      "cited": 7,
+      "cited_rate": 0.3333,
+      "total_penalty": 44246,
+      "avg_penalty_per_cited": 6321,
+      "repeat_citations": 1,
+      "small_sample": false
+    },
+    "238340": {
+      "name": null,
+      "inspections": 20,
+      "cited": 5,
+      "cited_rate": 0.25,
+      "total_penalty": 25288,
+      "avg_penalty_per_cited": 5058,
+      "repeat_citations": 0,
+      "small_sample": false
+    },
+    "238290": {
+      "name": null,
+      "inspections": 17,
+      "cited": 4,
+      "cited_rate": 0.2353,
+      "total_penalty": 16941,
+      "avg_penalty_per_cited": 4235,
+      "repeat_citations": 1,
+      "small_sample": true
+    },
+    "236117": {
+      "name": null,
+      "inspections": 16,
+      "cited": 2,
+      "cited_rate": 0.125,
+      "total_penalty": 21680,
+      "avg_penalty_per_cited": 10840,
+      "repeat_citations": 0,
+      "small_sample": true
+    },
+    "237990": {
+      "name": null,
+      "inspections": 16,
+      "cited": 6,
+      "cited_rate": 0.375,
+      "total_penalty": 61307,
+      "avg_penalty_per_cited": 10218,
+      "repeat_citations": 0,
+      "small_sample": true
+    },
+    "236210": {
+      "name": null,
+      "inspections": 15,
+      "cited": 2,
+      "cited_rate": 0.1333,
+      "total_penalty": 20202,
+      "avg_penalty_per_cited": 10101,
+      "repeat_citations": 0,
+      "small_sample": true
+    },
+    "237120": {
+      "name": null,
+      "inspections": 6,
+      "cited": 0,
+      "cited_rate": 0.0,
+      "total_penalty": 0,
+      "avg_penalty_per_cited": 0,
+      "repeat_citations": 0,
+      "small_sample": true
+    },
+    "237130": {
+      "name": null,
+      "inspections": 5,
+      "cited": 0,
+      "cited_rate": 0.0,
+      "total_penalty": 0,
+      "avg_penalty_per_cited": 0,
+      "repeat_citations": 0,
+      "small_sample": true
+    }
+  }
+}

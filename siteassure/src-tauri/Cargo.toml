@@ -1,0 +1,27 @@
+[package]
+name = "siteassure"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# rusqlite pinned to 0.37 to match wisper-core — a single bundled libsqlite3-sys (avoids a duplicate-native-lib link error).
+rusqlite = { version = "0.37", features = ["bundled"] }
+sha2 = "0.10"
+hex = "0.4"
+cpal = "0.15"
+uuid = { version = "1", features = ["v4"] }
+# Vendored on-device transcription pipeline (whisper.cpp, mic decode, model mgmt, GPU matrix, ffmpeg/video).
+wisper-core = { path = "../wisper-core" }
+
+[features]
+default = []
+# Exactly one GPU feature per build (see wisper-core/compute.rs). Metal is automatic on macOS.
+gpu-vulkan = ["wisper-core/gpu-vulkan"]
+gpu-cuda = ["wisper-core/gpu-cuda"]
+gpu-sycl = ["wisper-core/gpu-sycl"]

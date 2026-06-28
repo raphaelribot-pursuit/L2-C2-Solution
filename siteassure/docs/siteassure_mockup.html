@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SiteAssure — MVP screen flow mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;500;700&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --charcoal:#1E242A;
+    --charcoal-2:#2A3138;
+    --charcoal-3:#3A434B;
+    --paper:#F3EFE5;
+    --paper-2:#EAE3D2;
+    --steel:#4F7396;
+    --steel-dark:#2C4A63;
+    --steel-light:#DCE6ED;
+    --steel-border:#AFC3D2;
+    --amber:#EFA53C;
+    --amber-deep:#B97A1D;
+    --amber-tint:#FBE8C7;
+    --ink:#20262B;
+    --ink-soft:#5C6066;
+    --line:rgba(32,38,43,0.16);
+    --line-soft:rgba(32,38,43,0.09);
+    --f-head:'Roboto Slab', Cambria, Georgia, serif;
+    --f-body:'Inter', Calibri, 'Segoe UI', sans-serif;
+    --f-mono:'Roboto Mono', 'Courier New', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:#E2DCC9;
+    font-family:var(--f-body);
+    color:var(--ink);
+    padding:40px 32px 64px;
+  }
+  .icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;display:block;}
+
+  /* ---------- board header ---------- */
+  .board-wrap{max-width:1480px;margin:0 auto;}
+  .board-header{
+    display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:24px;
+    margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--line);
+  }
+  .brand-row{display:flex;align-items:center;gap:12px;}
+  .plumbmark{width:20px;height:30px;color:var(--charcoal);}
+  .board-title h1{font-family:var(--f-head);font-weight:500;font-size:22px;margin:0;color:var(--charcoal);letter-spacing:0.2px;}
+  .board-title .sub{font-family:var(--f-mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--steel-dark);margin-top:4px;}
+  .legend{display:flex;align-items:center;gap:18px;}
+  .swatch-row{display:flex;align-items:center;gap:8px;}
+  .swatch{width:14px;height:14px;border-radius:3px;border:1px solid var(--line);}
+  .swatch-label{font-family:var(--f-mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-soft);}
+  .legend-note{font-family:var(--f-body);font-style:italic;font-size:12px;color:var(--steel-dark);margin-top:6px;width:100%;text-align:right;}
+
+  /* ---------- canvas ---------- */
+  .canvas{
+    background:#E2DCC9;
+    background-image:radial-gradient(circle, rgba(32,38,43,0.14) 1px, transparent 1px);
+    background-size:22px 22px;
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:36px 28px 44px;
+  }
+  .row-label{
+    font-family:var(--f-mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;
+    color:var(--steel-dark);margin:0 0 14px 4px;display:flex;align-items:center;gap:8px;
+  }
+  .row-label .num{
+    width:18px;height:18px;border-radius:50%;background:var(--charcoal);color:var(--paper);
+    font-size:10px;display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);
+  }
+  .row{display:flex;gap:0;align-items:center;overflow-x:auto;padding:6px 4px 18px;}
+  .row-wide{display:flex;padding:6px 4px 4px;}
+
+  .frame-group{display:flex;flex-direction:column;align-items:center;gap:10px;flex:0 0 auto;}
+  .frame-label{
+    font-family:var(--f-mono);font-size:11px;color:var(--ink-soft);letter-spacing:0.03em;
+    background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:3px 10px;
+  }
+  .frame-label b{color:var(--charcoal);font-weight:700;}
+  .flow-arrow{flex:0 0 auto;color:var(--steel-border);width:34px;display:flex;align-items:center;justify-content:center;align-self:center;}
+  .flow-arrow .icon{width:22px;height:22px;}
+
+  /* ---------- device shell ---------- */
+  .device{
+    width:300px;background:var(--charcoal);border-radius:32px;padding:9px;flex:0 0 auto;
+  }
+  .device-wide{width:900px;background:var(--charcoal);border-radius:14px;padding:8px;flex:0 0 auto;}
+  .screen{
+    width:282px;height:604px;background:var(--paper);border-radius:24px;overflow:hidden;
+    display:flex;flex-direction:column;position:relative;
+  }
+  .screen-wide{
+    background:var(--paper);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;
+  }
+
+  .statusbar{
+    background:var(--charcoal);color:var(--paper);padding:9px 16px;display:flex;
+    justify-content:space-between;align-items:center;font-family:var(--f-mono);font-size:10.5px;
+    letter-spacing:0.02em;flex:0 0 auto;
+  }
+  .statusbar .offline{display:flex;align-items:center;gap:5px;color:var(--steel-light);}
+  .statusbar .offline .icon{width:13px;height:13px;}
+
+  .titlebar{
+    background:var(--charcoal);color:var(--paper);padding:11px 18px;display:flex;align-items:center;
+    gap:10px;font-family:var(--f-mono);font-size:11px;letter-spacing:0.04em;
+  }
+  .titlebar .plumbmark{width:13px;height:19px;color:var(--amber);}
+
+  /* ---------- app chrome ---------- */
+  .appbar{padding:14px 18px 6px;flex:0 0 auto;}
+  .appbar .brand-mini{display:flex;align-items:center;gap:8px;}
+  .brand-mini .plumbmark{width:14px;height:21px;color:var(--charcoal);}
+  .brand-mini .word{font-family:var(--f-head);font-weight:700;font-size:15px;letter-spacing:0.3px;color:var(--charcoal);}
+  .tagline{font-family:var(--f-body);font-style:italic;font-size:11px;color:var(--steel-dark);margin:4px 0 0;}
+
+  .chiprow{display:flex;gap:6px;padding:12px 18px 4px;flex-wrap:wrap;flex:0 0 auto;}
+  .chip{
+    font-family:var(--f-mono);font-size:10.5px;letter-spacing:0.02em;padding:5px 10px;border-radius:14px;
+    border:1px solid var(--steel-border);color:var(--steel-dark);background:transparent;
+  }
+  .chip.selected{background:var(--charcoal);border-color:var(--charcoal);color:var(--paper);}
+
+  .cta-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 0 14px;flex:0 0 auto;}
+  .cta-circle{
+    width:78px;height:78px;border-radius:50%;background:var(--amber);display:flex;align-items:center;
+    justify-content:center;color:var(--charcoal);border:1px solid var(--amber-deep);
+  }
+  .cta-circle .icon{width:30px;height:30px;stroke-width:1.8;}
+  .cta-label{font-family:var(--f-mono);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--steel-dark);}
+
+  .section-label{
+    font-family:var(--f-mono);font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;
+    color:var(--ink-soft);padding:6px 18px;border-bottom:1px solid var(--line);margin:0 0 4px;flex:0 0 auto;
+  }
+
+  .record-list{padding:2px 14px;flex:1 1 auto;}
+  .record-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line-soft);}
+  .record-icon{
+    width:30px;height:30px;border-radius:7px;background:var(--steel-light);color:var(--steel-dark);
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .record-icon .icon{width:16px;height:16px;}
+  .record-body{flex:1 1 auto;min-width:0;}
+  .record-title{font-family:var(--f-body);font-weight:600;font-size:12.5px;color:var(--ink);}
+  .record-meta{font-family:var(--f-mono);font-size:10px;color:var(--ink-soft);margin-top:2px;}
+  .flag-badge{
+    font-family:var(--f-mono);font-size:10px;background:var(--amber-tint);color:var(--amber-deep);
+    border:1px solid var(--amber-deep);border-radius:10px;padding:2px 7px;flex:0 0 auto;
+  }
+  .ok-badge{color:var(--steel-dark);flex:0 0 auto;}
+  .ok-badge .icon{width:15px;height:15px;}
+
+  .bottomnav{
+    display:flex;justify-content:space-around;align-items:center;background:var(--charcoal);
+    padding:10px 0 12px;flex:0 0 auto;
+  }
+  .navitem{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--steel-light);}
+  .navitem.active{color:var(--amber);}
+  .navitem .icon{width:18px;height:18px;}
+  .navitem span{font-family:var(--f-mono);font-size:9px;letter-spacing:0.04em;text-transform:uppercase;}
+
+  /* ---------- screen 2: capture ---------- */
+  .cap-header{padding:14px 18px 0;flex:0 0 auto;}
+  .cap-header .type-chip{
+    font-family:var(--f-mono);font-size:10px;border:1px solid var(--steel-border);color:var(--steel-dark);
+    border-radius:10px;padding:2px 8px;display:inline-block;margin-bottom:6px;
+  }
+  .cap-header h2{font-family:var(--f-head);font-size:15px;font-weight:500;margin:0;color:var(--charcoal);}
+
+  .rec-stage{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:8px 0 6px;flex:0 0 auto;}
+  .rec-ring{
+    width:104px;height:104px;border-radius:50%;border:1.5px dashed var(--amber-deep);
+    display:flex;align-items:center;justify-content:center;animation:pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(239,165,60,0.35);}70%{box-shadow:0 0 0 12px rgba(239,165,60,0);}100%{box-shadow:0 0 0 0 rgba(239,165,60,0);}}
+  .rec-mic{width:72px;height:72px;border-radius:50%;background:var(--amber);display:flex;align-items:center;justify-content:center;color:var(--charcoal);}
+  .rec-mic .icon{width:28px;height:28px;stroke-width:1.8;}
+  .timer{font-family:var(--f-mono);font-size:20px;color:var(--ink);letter-spacing:0.04em;}
+
+  .waveform{display:flex;align-items:flex-end;gap:3px;height:30px;padding:0 18px;flex:0 0 auto;}
+  .wave-bar{width:4px;border-radius:2px;background:var(--steel);}
+
+  .caption-card{
+    margin:12px 18px;padding:10px 12px;background:var(--paper-2);border:1px solid var(--line);
+    border-radius:8px;font-style:italic;font-size:11.5px;color:var(--ink-soft);flex:1 1 auto;
+  }
+
+  .pill-row{display:flex;justify-content:center;padding:0 18px 10px;flex:0 0 auto;}
+  .pill-soft{
+    display:flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:10px;color:var(--steel-dark);
+    background:var(--steel-light);border-radius:12px;padding:4px 10px;
+  }
+  .pill-soft .icon{width:13px;height:13px;}
+
+  .btn-block{
+    margin:0 16px 16px;padding:13px;text-align:center;background:var(--charcoal);color:var(--paper);
+    border-radius:12px;font-family:var(--f-body);font-weight:600;font-size:13px;flex:0 0 auto;
+  }
+
+  /* ---------- screen 3: review ---------- */
+  .field-table{margin:10px 16px 4px;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:0 0 auto;}
+  .field-row{display:flex;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line-soft);background:var(--paper);}
+  .field-row:last-child{border-bottom:none;}
+  .field-label{font-family:var(--f-mono);font-size:9.5px;letter-spacing:0.08em;text-transform:uppercase;color:var(--steel-dark);width:62px;flex:0 0 auto;}
+  .field-value{font-family:var(--f-body);font-size:12.5px;color:var(--ink);flex:1 1 auto;}
+  .field-row .icon{width:14px;height:14px;color:var(--steel-border);}
+
+  .narr-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px 6px;flex:0 0 auto;}
+  .narr-head .section-label{padding:0;border-bottom:none;margin:0;}
+  .segctrl{display:flex;border:1px solid var(--steel-border);border-radius:10px;overflow:hidden;}
+  .seg{font-family:var(--f-mono);font-size:9.5px;padding:3px 9px;color:var(--steel-dark);}
+  .seg.selected{background:var(--charcoal);color:var(--paper);}
+
+  .narrative-card{margin:0 16px;padding:11px 12px;background:var(--paper-2);border:1px solid var(--line);border-radius:8px;font-size:12px;line-height:1.55;color:var(--ink);flex:1 1 auto;}
+  .ai-note{font-family:var(--f-body);font-style:italic;font-size:10px;color:var(--ink-soft);margin:8px 16px 0;}
+
+  .link-row{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 0 4px;color:var(--steel-dark);font-size:11.5px;font-family:var(--f-body);flex:0 0 auto;}
+  .link-row .icon{width:13px;height:13px;}
+
+  /* ---------- screen 4: flags ---------- */
+  .flagbar{background:var(--amber-tint);border-bottom:1px solid var(--amber-deep);padding:12px 18px;display:flex;align-items:center;gap:10px;flex:0 0 auto;}
+  .flagbar .icon{width:20px;height:20px;color:var(--amber-deep);}
+  .flagbar h2{font-family:var(--f-head);font-size:15px;font-weight:500;margin:0;color:var(--charcoal);}
+  .flagbar p{font-family:var(--f-mono);font-size:10px;color:var(--amber-deep);margin:2px 0 0;}
+
+  .flag-list{padding:10px 14px;flex:1 1 auto;}
+  .flagcard{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:11px 12px 10px;margin-bottom:9px;}
+  .flagchip{position:absolute;top:-9px;left:10px;width:18px;height:18px;border-radius:50%;background:var(--amber);display:flex;align-items:center;justify-content:center;color:var(--charcoal);}
+  .flagchip .icon{width:11px;height:11px;}
+  .flag-title{font-family:var(--f-body);font-weight:700;font-size:12px;color:var(--ink);margin:4px 0 4px;}
+  .flag-rationale{font-family:var(--f-body);font-size:11px;color:var(--ink-soft);line-height:1.45;}
+  .cite-pill{display:inline-block;margin-top:7px;font-family:var(--f-mono);font-size:9.5px;border:1px solid var(--steel-border);color:var(--steel-dark);border-radius:9px;padding:2px 8px;}
+  .actionrow{display:flex;gap:6px;margin-top:9px;}
+  .btn-mini{font-family:var(--f-mono);font-size:9.5px;padding:5px 9px;border-radius:7px;display:flex;align-items:center;gap:4px;}
+  .btn-mini .icon{width:11px;height:11px;}
+  .btn-accept{background:var(--steel-dark);color:var(--paper);}
+  .btn-dismiss{border:1px solid var(--steel-border);color:var(--steel-dark);}
+  .btn-annotate{color:var(--ink-soft);}
+
+  .teaser-row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px dashed var(--steel-border);border-radius:8px;font-family:var(--f-mono);font-size:10px;color:var(--steel-dark);}
+
+  .flagfooter{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 14px;flex:0 0 auto;}
+  .progress-ticks{display:flex;gap:4px;}
+  .tick{width:14px;height:5px;border-radius:2px;background:var(--steel-border);}
+  .tick.done{background:var(--charcoal);}
+  .btn-primary-sm{font-family:var(--f-body);font-weight:600;font-size:11.5px;background:var(--charcoal);color:var(--paper);padding:8px 14px;border-radius:9px;}
+
+  /* ---------- screen 5: audit ---------- */
+  .rec-header{padding:14px 18px 6px;flex:0 0 auto;}
+  .rec-header h2{font-family:var(--f-head);font-size:14px;font-weight:500;margin:0;color:var(--charcoal);}
+  .status-pill{display:inline-block;margin-top:6px;font-family:var(--f-mono);font-size:9.5px;background:var(--steel-light);color:var(--steel-dark);border-radius:8px;padding:2px 8px;}
+  .meta-mono{font-family:var(--f-mono);font-size:10px;color:var(--ink-soft);margin-top:6px;}
+
+  .verify-card{display:flex;align-items:center;gap:9px;margin:12px 16px;padding:10px 12px;background:var(--steel-light);border-radius:8px;color:var(--steel-dark);flex:0 0 auto;}
+  .verify-card .icon{width:18px;height:18px;flex:0 0 auto;}
+  .verify-card span{font-family:var(--f-body);font-weight:600;font-size:11px;}
+
+  .timeline{padding:4px 18px 12px;flex:1 1 auto;}
+  .tl-item{display:flex;gap:10px;position:relative;padding-bottom:16px;}
+  .tl-item:last-child{padding-bottom:0;}
+  .tl-rail{display:flex;flex-direction:column;align-items:center;width:18px;flex:0 0 auto;}
+  .tl-dot{width:18px;height:18px;border-radius:50%;background:var(--paper);border:1.5px solid var(--steel-dark);color:var(--steel-dark);display:flex;align-items:center;justify-content:center;}
+  .tl-dot .icon{width:10px;height:10px;}
+  .tl-line{flex:1 1 auto;width:1px;background:var(--steel-border);border-left:1px dashed var(--steel-border);min-height:18px;margin-top:2px;}
+  .tl-content{flex:1 1 auto;}
+  .tl-time{font-family:var(--f-mono);font-size:9.5px;color:var(--ink-soft);}
+  .tl-desc{font-family:var(--f-body);font-size:11.5px;color:var(--ink);margin-top:2px;}
+
+  /* ---------- screen 6: dashboard ---------- */
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:20px 24px 6px;}
+  .stat-card{background:var(--paper-2);border-radius:9px;padding:14px 16px;}
+  .stat-label{font-family:var(--f-mono);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--steel-dark);}
+  .stat-value{font-family:var(--f-head);font-size:24px;font-weight:500;color:var(--charcoal);margin-top:6px;}
+  .stat-delta{font-family:var(--f-mono);font-size:10px;color:var(--ink-soft);margin-top:4px;}
+
+  .bench-section{padding:18px 24px 6px;}
+  .bench-section .section-label{padding:0 0 10px;}
+  .bench-row{display:flex;align-items:center;gap:12px;margin-bottom:11px;}
+  .bench-name{width:120px;font-family:var(--f-body);font-size:12px;color:var(--ink);flex:0 0 auto;}
+  .bench-track{flex:1 1 auto;height:16px;background:var(--paper-2);border-radius:4px;position:relative;overflow:hidden;}
+  .bench-fill{height:100%;border-radius:4px;background:var(--steel);}
+  .bench-fill.highlight{background:var(--amber);}
+  .bench-pct{width:48px;text-align:right;font-family:var(--f-mono);font-size:11.5px;color:var(--ink);flex:0 0 auto;}
+  .avg-line{position:absolute;top:-4px;bottom:-4px;width:1px;border-left:1px dashed var(--charcoal-3);}
+  .avg-label{position:absolute;top:-18px;font-family:var(--f-mono);font-size:8.5px;color:var(--ink-soft);white-space:nowrap;}
+
+  .callout-row{display:flex;gap:14px;padding:10px 24px 4px;}
+  .callout-card{flex:1 1 auto;border:1px dashed var(--steel-border);border-radius:9px;padding:11px 14px;}
+  .callout-card .label{font-family:var(--f-mono);font-size:9.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--steel-dark);}
+  .callout-card .body{font-family:var(--f-body);font-size:12px;color:var(--ink);margin-top:4px;line-height:1.4;}
+
+  .footnote{font-family:var(--f-mono);font-size:9.5px;color:var(--ink-soft);padding:14px 24px 18px;border-top:1px solid var(--line);margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="board-wrap">
+
+  <div class="board-header">
+    <div>
+      <div class="brand-row">
+        <svg class="plumbmark" viewBox="0 0 24 32"><line x1="12" y1="2" x2="12" y2="21" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 2"/><circle cx="12" cy="2" r="1.6" fill="currentColor"/><path d="M8 21h8l-2 7a2 2 0 01-4 0z" fill="currentColor"/></svg>
+        <div class="board-title">
+          <h1>SiteAssure — MVP screen flow mockup</h1>
+          <div class="sub">Design springboard · draft v0.1 · for Aisling &amp; Raphael</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="legend">
+        <div class="swatch-row"><div class="swatch" style="background:var(--charcoal)"></div><div class="swatch-label">Charcoal steel</div></div>
+        <div class="swatch-row"><div class="swatch" style="background:var(--steel)"></div><div class="swatch-label">Steel blue</div></div>
+        <div class="swatch-row"><div class="swatch" style="background:var(--amber)"></div><div class="swatch-label">Safety amber</div></div>
+      </div>
+      <div class="legend-note">Amber marks flags, active capture, and the "prove it" moments only.</div>
+    </div>
+  </div>
+
+  <div class="canvas">
+
+    <div class="row-label"><span class="num">1–5</span> Core capture loop — foreman / site lead</div>
+    <div class="row">
+
+      <!-- FRAME 1: HOME -->
+      <div class="frame-group">
+        <div class="frame-label"><b>01</b> · Home / new record</div>
+        <div class="device"><div class="screen">
+          <div class="statusbar"><span>07:42</span><span class="offline"><svg class="icon" viewBox="0 0 24 24"><path d="M5 9a11 11 0 0114 0M8 12.5a7 7 0 018 0"/><line x1="3" y1="3" x2="21" y2="21"/></svg>no signal</span></div>
+          <div class="appbar">
+            <div class="brand-mini">
+              <svg class="plumbmark" viewBox="0 0 24 32"><line x1="12" y1="2" x2="12" y2="21" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 2"/><circle cx="12" cy="2" r="1.6" fill="currentColor"/><path d="M8 21h8l-2 7a2 2 0 01-4 0z" fill="currentColor"/></svg>
+              <span class="word">SiteAssure</span>
+            </div>
+            <p class="tagline">Speak it. Flag it. Prove it.</p>
+          </div>
+          <div class="chiprow">
+            <div class="chip selected">Daily log</div>
+            <div class="chip">JHA</div>
+            <div class="chip">Inspection</div>
+            <div class="chip">Incident</div>
+          </div>
+          <div class="cta-wrap">
+            <div class="cta-circle"><svg class="icon" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3M9 21h6"/></svg></div>
+            <div class="cta-label">Tap to speak</div>
+          </div>
+          <div class="section-label">Recent records</div>
+          <div class="record-list">
+            <div class="record-row">
+              <div class="record-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M7 3h7l4 4v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg></div>
+              <div class="record-body"><div class="record-title">Daily log — Hartley Ave</div><div class="record-meta">Today · 1:42 PM · Roofing crew</div></div>
+              <div class="flag-badge">2 flags</div>
+            </div>
+            <div class="record-row">
+              <div class="record-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M7 3h7l4 4v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg></div>
+              <div class="record-body"><div class="record-title">JHA — South slope tear-off</div><div class="record-meta">Today · 7:05 AM · Roofing crew</div></div>
+              <div class="ok-badge"><svg class="icon" viewBox="0 0 24 24"><path d="M4 12l5 5 11-11"/></svg></div>
+            </div>
+            <div class="record-row" style="border-bottom:none;">
+              <div class="record-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M7 3h7l4 4v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg></div>
+              <div class="record-body"><div class="record-title">Incident — near miss, lift 3</div><div class="record-meta">Yesterday · 4:09 PM · Diaz crew</div></div>
+              <div class="flag-badge">1 flag</div>
+            </div>
+          </div>
+          <div class="bottomnav">
+            <div class="navitem active"><svg class="icon" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7M6 10v9h12v-9"/></svg><span>Home</span></div>
+            <div class="navitem"><svg class="icon" viewBox="0 0 24 24"><path d="M7 3h7l4 4v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z"/></svg><span>Records</span></div>
+            <div class="navitem"><svg class="icon" viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><rect x="3" y="12" width="4" height="8"/><rect x="10" y="6" width="4" height="14"/><rect x="17" y="3" width="4" height="17"/></svg><span>Trends</span></div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="flow-arrow"><svg class="icon" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></div>
+
+      <!-- FRAME 2: CAPTURE -->
+      <div class="frame-group">
+        <div class="frame-label"><b>02</b> · Voice capture</div>
+        <div class="device"><div class="screen">
+          <div class="statusbar"><span>07:43</span><span class="offline"><svg class="icon" viewBox="0 0 24 24"><path d="M5 9a11 11 0 0114 0M8 12.5a7 7 0 018 0"/><line x1="3" y1="3" x2="21" y2="21"/></svg>no signal</span></div>
+          <div class="cap-header">
+            <span class="type-chip">Daily log</span>
+            <h2>Recording…</h2>
+          </div>
+          <div class="rec-stage">
+            <div class="rec-ring"><div class="rec-mic"><svg class="icon" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3M9 21h6"/></svg></div></div>
+            <div class="timer">00:47</div>
+          </div>
+          <div class="waveform">
+            <div class="wave-bar" style="height:8px"></div><div class="wave-bar" style="height:16px"></div>
+            <div class="wave-bar" style="height:24px"></div><div class="wave-bar" style="height:12px"></div>
+            <div class="wave-bar" style="height:28px"></div><div class="wave-bar" style="height:10px"></div>
+            <div class="wave-bar" style="height:20px"></div><div class="wave-bar" style="height:14px"></div>
+            <div class="wave-bar" style="height:26px"></div><div class="wave-bar" style="height:9px"></div>
+            <div class="wave-bar" style="height:18px"></div><div class="wave-bar" style="height:13px"></div>
+          </div>
+          <div class="caption-card">"...make sure the guys on the third lift have their harnesses clipped before we start the felt—"</div>
+          <div class="pill-row"><div class="pill-soft"><svg class="icon" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3M9 21h6"/></svg>transcribing fully on-device</div></div>
+          <div class="btn-block">Done speaking</div>
+        </div></div>
+      </div>
+
+      <div class="flow-arrow"><svg class="icon" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></div>
+
+      <!-- FRAME 3: REVIEW -->
+      <div class="frame-group">
+        <div class="frame-label"><b>03</b> · Review &amp; structure</div>
+        <div class="device"><div class="screen">
+          <div class="statusbar"><span>07:46</span><span class="offline"><svg class="icon" viewBox="0 0 24 24"><path d="M5 9a11 11 0 0114 0M8 12.5a7 7 0 018 0"/><line x1="3" y1="3" x2="21" y2="21"/></svg>no signal</span></div>
+          <div class="cap-header"><span class="type-chip">Daily log</span><h2>Confirm details</h2></div>
+          <div class="field-table">
+            <div class="field-row"><div class="field-label">Date</div><div class="field-value">Jun 26, 2026</div><svg class="icon" viewBox="0 0 24 24"><path d="M4 17.5L3 21l3.5-1L18.5 7.9a1.5 1.5 0 000-2.1l-1.3-1.3a1.5 1.5 0 00-2.1 0z"/></svg></div>
+            <div class="field-row"><div class="field-label">Site</div><div class="field-value">Hartley Ave — Lot 14</div><svg class="icon" viewBox="0 0 24 24"><path d="M4 17.5L3 21l3.5-1L18.5 7.9a1.5 1.5 0 000-2.1l-1.3-1.3a1.5 1.5 0 00-2.1 0z"/></svg></div>
+            <div class="field-row"><div class="field-label">Crew</div><div class="field-value">Diaz crew (6)</div><svg class="icon" viewBox="0 0 24 24"><path d="M4 17.5L3 21l3.5-1L18.5 7.9a1.5 1.5 0 000-2.1l-1.3-1.3a1.5 1.5 0 00-2.1 0z"/></svg></div>
+            <div class="field-row"><div class="field-label">Trade</div><div class="field-value">Roofing</div><svg class="icon" viewBox="0 0 24 24"><path d="M4 17.5L3 21l3.5-1L18.5 7.9a1.5 1.5 0 000-2.1l-1.3-1.3a1.5 1.5 0 00-2.1 0z"/></svg></div>
+          </div>
+          <div class="narr-head">
+            <div class="section-label" style="padding:0;">Narrative</div>
+            <div class="segctrl"><div class="seg selected">Cleaned</div><div class="seg">Raw</div></div>
+          </div>
+          <div class="narrative-card">Crew completed felt underlayment on the south slope. Fall-protection anchors were placed before work began. One ladder needs a replacement foot. No incidents to report.</div>
+          <div class="ai-note">AI summary — shown alongside the raw transcript, never replacing it.</div>
+          <div class="link-row"><svg class="icon" viewBox="0 0 24 24" style="fill:currentColor;stroke:none"><path d="M8 5l11 7-11 7z"/></svg>Listen to original audio</div>
+          <div class="btn-block" style="margin-top:0;">Confirm &amp; save</div>
+        </div></div>
+      </div>
+
+      <div class="flow-arrow"><svg class="icon" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></div>
+
+      <!-- FRAME 4: FLAGS -->
+      <div class="frame-group">
+        <div class="frame-label"><b>04</b> · Safety flags</div>
+        <div class="device"><div class="screen">
+          <div class="flagbar">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M6 21V4M6 4h12l-3 4 3 4H6"/></svg>
+            <div><h2>3 flags found</h2><p>Reviewed before saving</p></div>
+          </div>
+          <div class="flag-list">
+            <div class="flagcard">
+              <div class="flagchip"><svg class="icon" viewBox="0 0 24 24" style="stroke-width:2"><path d="M6 21V4M6 4h12l-3 4 3 4H6"/></svg></div>
+              <div class="flag-title">Fall protection — anchor not confirmed</div>
+              <div class="flag-rationale">Transcript mentions starting work on the south slope but doesn't confirm anchors were tied off before the crew went up.</div>
+              <div class="cite-pill">Roofing · 57.8% cited for this</div>
+              <div class="actionrow">
+                <div class="btn-mini btn-accept"><svg class="icon" viewBox="0 0 24 24"><path d="M4 12l5 5 11-11"/></svg>Accept</div>
+                <div class="btn-mini btn-dismiss"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg>Dismiss</div>
+                <div class="btn-mini btn-annotate"><svg class="icon" viewBox="0 0 24 24"><path d="M4 17.5L3 21l3.5-1L18.5 7.9a1.5 1.5 0 000-2.1l-1.3-1.3a1.5 1.5 0 00-2.1 0z"/></svg>Note</div>
+              </div>
+            </div>
+            <div class="flagcard">
+              <div class="flagchip"><svg class="icon" viewBox="0 0 24 24" style="stroke-width:2"><path d="M6 21V4M6 4h12l-3 4 3 4H6"/></svg></div>
+              <div class="flag-title">PPE — hard hat not mentioned</div>
+              <div class="flag-rationale">Ground crew is described moving material below the lift, but PPE isn't called out in the narrative.</div>
+              <div class="cite-pill">Roofing · 57.8% cited for this</div>
+              <div class="actionrow">
+                <div class="btn-mini btn-accept"><svg class="icon" viewBox="0 0 24 24"><path d="M4 12l5 5 11-11"/></svg>Accept</div>
+                <div class="btn-mini btn-dismiss"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg>Dismiss</div>
+                <div class="btn-mini btn-annotate"><svg class="icon" viewBox="0 0 24 24"><path d="M4 17.5L3 21l3.5-1L18.5 7.9a1.5 1.5 0 000-2.1l-1.3-1.3a1.5 1.5 0 00-2.1 0z"/></svg>Note</div>
+              </div>
+            </div>
+            <div class="teaser-row"><span>+1 more — scaffolding guardrail condition</span><svg class="icon" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M6 9l6 6 6-6"/></svg></div>
+          </div>
+          <div class="flagfooter">
+            <div class="progress-ticks"><div class="tick done"></div><div class="tick done"></div><div class="tick"></div></div>
+            <div class="btn-primary-sm">Save record</div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="flow-arrow"><svg class="icon" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></div>
+
+      <!-- FRAME 5: AUDIT -->
+      <div class="frame-group">
+        <div class="frame-label"><b>05</b> · Record &amp; audit trail</div>
+        <div class="device"><div class="screen">
+          <div class="statusbar"><span>09:14</span><span class="offline"><svg class="icon" viewBox="0 0 24 24"><path d="M5 9a11 11 0 0114 0M8 12.5a7 7 0 018 0"/><line x1="3" y1="3" x2="21" y2="21"/></svg>no signal</span></div>
+          <div class="rec-header">
+            <h2>Incident — near miss, Hartley Ave</h2>
+            <div class="status-pill">Amended</div>
+            <div class="meta-mono">Filed Jun 18, 2026 · 4:09 PM · J. Diaz</div>
+          </div>
+          <div class="verify-card"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Audit verified — no tampering detected</span></div>
+          <div class="section-label">Version history</div>
+          <div class="timeline">
+            <div class="tl-item">
+              <div class="tl-rail"><div class="tl-dot"><svg class="icon" viewBox="0 0 24 24"><path d="M9 15l6-6M8 13l-2 2a3 3 0 004 4l2-2M16 11l2-2a3 3 0 00-4-4l-2 2"/></svg></div><div class="tl-line"></div></div>
+              <div class="tl-content"><div class="tl-time">v3 · Jun 20, 9:14 AM · J. Diaz</div><div class="tl-desc">Corrected crew count from 5 to 6</div></div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-rail"><div class="tl-dot"><svg class="icon" viewBox="0 0 24 24"><path d="M9 15l6-6M8 13l-2 2a3 3 0 004 4l2-2M16 11l2-2a3 3 0 00-4-4l-2 2"/></svg></div><div class="tl-line"></div></div>
+              <div class="tl-content"><div class="tl-time">v2 · Jun 19, 6:02 PM · R. Ribot, safety mgr</div><div class="tl-desc">Added note: ladder foot replaced same day</div></div>
+            </div>
+            <div class="tl-item">
+              <div class="tl-rail"><div class="tl-dot"><svg class="icon" viewBox="0 0 24 24"><path d="M9 15l6-6M8 13l-2 2a3 3 0 004 4l2-2M16 11l2-2a3 3 0 00-4-4l-2 2"/></svg></div></div>
+              <div class="tl-content"><div class="tl-time">v1 · Jun 18, 4:09 PM · J. Diaz</div><div class="tl-desc">Original record created</div></div>
+            </div>
+          </div>
+          <div class="link-row" style="padding-bottom:16px;">View full record<svg class="icon" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></div>
+        </div></div>
+      </div>
+
+    </div>
+
+    <div class="row-label" style="margin-top:36px;"><span class="num">6</span> Back office — trade-risk dashboard</div>
+    <div class="row-wide">
+      <div class="frame-group" style="align-items:flex-start;">
+        <div class="frame-label"><b>06</b> · Compliance manager dashboard</div>
+        <div class="device-wide"><div class="screen-wide">
+          <div class="titlebar">
+            <svg class="plumbmark" viewBox="0 0 24 32"><line x1="12" y1="2" x2="12" y2="21" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 2"/><circle cx="12" cy="2" r="1.6" fill="currentColor"/><path d="M8 21h8l-2 7a2 2 0 01-4 0z" fill="currentColor"/></svg>
+            SiteAssure — back office
+          </div>
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-label">Open flags</div><div class="stat-value">7</div><div class="stat-delta">across 4 active sites</div></div>
+            <div class="stat-card"><div class="stat-label">Records this week</div><div class="stat-value">142</div><div class="stat-delta">↑ 18 vs last week</div></div>
+            <div class="stat-card"><div class="stat-label">Audit integrity</div><div class="stat-value">100%</div><div class="stat-delta">every edit logged</div></div>
+            <div class="stat-card"><div class="stat-label">Avg capture time</div><div class="stat-value">1m 48s</div><div class="stat-delta">target &lt; 2 min</div></div>
+          </div>
+          <div class="bench-section">
+            <div class="section-label">Trade-risk benchmark — NY-Newark-Jersey City, NAICS 23 (24 mo)</div>
+            <div class="bench-row">
+              <div class="bench-name">Roofing</div>
+              <div class="bench-track"><div class="bench-fill highlight" style="width:57.8%"></div><div class="avg-line" style="left:40.1%"></div></div>
+              <div class="bench-pct">57.8%</div>
+            </div>
+            <div class="bench-row">
+              <div class="bench-name">Framing</div>
+              <div class="bench-track"><div class="bench-fill" style="width:57.3%"></div><div class="avg-line" style="left:40.1%"></div></div>
+              <div class="bench-pct">57.3%</div>
+            </div>
+            <div class="bench-row">
+              <div class="bench-name">Masonry</div>
+              <div class="bench-track"><div class="bench-fill" style="width:51.2%"></div><div class="avg-line" style="left:40.1%"></div></div>
+              <div class="bench-pct">51.2%</div>
+            </div>
+            <div class="bench-row">
+              <div class="bench-name">Highway / bridge</div>
+              <div class="bench-track"><div class="bench-fill" style="width:41.3%"></div><div class="avg-line" style="left:40.1%"><span class="avg-label">area avg 40.1%</span></div></div>
+              <div class="bench-pct">41.3%</div>
+            </div>
+            <div class="bench-row">
+              <div class="bench-name">Commercial bldg</div>
+              <div class="bench-track"><div class="bench-fill" style="width:19.0%"></div><div class="avg-line" style="left:40.1%"></div></div>
+              <div class="bench-pct">19.0%</div>
+            </div>
+          </div>
+          <div class="callout-row">
+            <div class="callout-card"><div class="label">Your crews</div><div class="body">Roofing is highlighted in amber — it's where your active crews work, and where the citation rate runs highest.</div></div>
+            <div class="callout-card"><div class="label">Highest penalty</div><div class="body">Highway / bridge work carries the highest average penalty per cited inspection: $21,738.</div></div>
+            <div class="callout-card"><div class="label">Most repeats</div><div class="body">Framing carries the most repeat violations of any trade in this window: 64.</div></div>
+          </div>
+          <div class="footnote">Source: OSHA enforcement data, NAICS 23, 3,113 inspections over a 24-month window, NY-Newark-Jersey City MSA. Used to ground safety-flagging and benchmarking — not a predictive model at MVP.</div>
+        </div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

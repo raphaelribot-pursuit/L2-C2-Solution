@@ -1,0 +1,41 @@
+//! SiteAssure — Tauri + Rust shell (transcription pipeline vendored from wisper). Single-device, offline v1.
+use std::sync::Mutex;
+use tauri::Manager;
+
+mod audit;
+mod commands;
+mod db;
+mod flags;
+mod mic;
+
+/// Shared app state: the active mic recorder (None when idle).
+pub struct AppState {
+    pub recorder: Mutex<Option<mic::MicRecorder>>,
+}
+
+fn main() {
+    tauri::Builder::default()
+        .manage(AppState {
+            recorder: Mutex::new(None),
+        })
+        .setup(|app| {
+            // First-run: ensure the staged-model + retained-audio dirs exist under app data.
+            let data = app.path().app_data_dir()?;
+            std::fs::create_dir_all(data.join("models")).ok();
+            std::fs::create_dir_all(data.join("audio")).ok();
+            // TODO(Phase 2): db::init(app) — open SQLite under app data + apply db/schema.sql.
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::transcribe,
+            commands::start_recording,
+            commands::recording_status,
+            commands::stop_recording,
+            commands::save_record,
+            commands::amend_record,
+            commands::get_record,
+            commands::list_records,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running SiteAssure");
+}

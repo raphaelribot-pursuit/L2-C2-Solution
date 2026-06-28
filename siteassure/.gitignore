@@ -1,0 +1,27 @@
+node_modules/
+dist/
+src-tauri/target/
+
+# OSHA pipeline raw pulls
+data/raw/
+
+# Staged STT models + managed binaries — too large for the repo, staged per machine (see README)
+*.bin
+models/
+bin/ffmpeg*
+bin/yt-dlp*
+
+# Local store + captured audio — PII / evidentiary content, never commit (see DATA_POLICY.md)
+*.db
+*.db-shm
+*.db-wal
+audio/
+recordings/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store

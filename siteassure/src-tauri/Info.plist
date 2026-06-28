@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- macOS only. Tauri merges this into the generated Info.plist on macOS builds.
+     Without NSMicrophoneUsageDescription, macOS TCC silently kills the app on mic access
+     (the Apple Silicon demo machine). wisper did not guard this; SiteAssure does. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>SiteAssure records your voice on-device to transcribe field logs. Audio never leaves this device.</string>
+</dict>
+</plist>

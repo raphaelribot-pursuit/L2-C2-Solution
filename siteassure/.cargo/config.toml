@@ -1,0 +1,14 @@
+# CMake is required to build whisper.cpp (whisper-rs-sys).
+# Do not set CMAKE here — a Windows-only path breaks Linux/macOS CI and cross-platform builds.
+# Local Windows dev sets CMAKE via dev.ps1 / build-gpu.ps1 when Program Files CMake is not on PATH.
+
+# Metal / Accelerate linking for whisper.cpp on Apple Silicon and Intel Macs.
+[target.aarch64-apple-darwin]
+rustflags = ["-lc++", "-l", "framework=Accelerate"]
+
+[target.x86_64-apple-darwin]
+rustflags = ["-lc++", "-l", "framework=Accelerate"]
+
+[env]
+MACOSX_DEPLOYMENT_TARGET = "10.15"
+CMAKE_OSX_DEPLOYMENT_TARGET = "10.15"

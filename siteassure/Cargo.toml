@@ -1,0 +1,4 @@
+# SiteAssure Cargo workspace. wisper-core is vendored from wisper (on-device whisper.cpp pipeline).
+[workspace]
+members = ["wisper-core", "src-tauri"]
+resolver = "2"
