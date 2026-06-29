@@ -1,0 +1,71 @@
+name: SiteAssure Security
+on:
+  pull_request:
+    paths: ['siteassure/**', '.github/workflows/siteassure-*.yml']
+  push:
+    branches: [ master ]
+    paths: ['siteassure/**']
+
+jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deps-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: install cargo-audit (retry transient crates.io failures)
+        run: cargo install cargo-audit --locked || (sleep 8 && cargo install cargo-audit --locked)
+      - name: cargo audit
+        working-directory: siteassure
+        run: |
+          cargo generate-lockfile
+          cargo audit
+
+  deps-npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: npm audit
+        working-directory: siteassure
+        run: |
+          npm install --package-lock-only
+          # --omit=dev: audit only shipped deps. Build tooling (vite/vitest/esbuild) never ships.
+          npm audit --omit=dev --audit-level=high
+
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install semgrep
+      # Gate on OUR code only; --exclude vendored wisper-core (upstream). Secrets are covered by gitleaks.
+      - run: semgrep --error --config p/rust --config p/typescript --exclude wisper-core siteassure
+
+  app-invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: CSP must be set (SEC-004)
+        run: |
+          python - <<'PY'
+          import json
+          c = json.load(open("siteassure/src-tauri/tauri.conf.json"))
+          csp = (c.get("app", {}).get("security", {}) or {}).get("csp")
+          assert csp and str(csp).lower() != "null", "SiteAssure tauri.conf.json app.security.csp not set (SEC-004)"
+          print("CSP ok:", csp)
+          PY
+      # TODO(phase 1+): offline-egress test + IPC path-validation tests (cargo test) once commands land.

@@ -1,0 +1,52 @@
+name: SiteAssure CI
+on:
+  pull_request:
+    paths: ['siteassure/**', '.github/workflows/siteassure-*.yml']
+  push:
+    branches: [ master ]
+    paths: ['siteassure/**', '.github/workflows/siteassure-*.yml']
+
+defaults:
+  run:
+    working-directory: siteassure
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, macos-14 ]   # macos-14 = Apple Silicon
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install CMake (whisper.cpp build dep)
+        uses: lukka/get-cmake@latest
+
+      # Switch to `npm ci` once package-lock.json is committed.
+      - run: npm install
+
+      - name: Frontend typecheck + build
+        run: npm run build
+
+      - name: Frontend tests (vitest)
+        run: npm test
+
+      # --no-deps + -p siteassure: lint OUR crate only. wisper-core is a vendored workspace member —
+      # build it, but don't gate on its upstream clippy lints.
+      - name: Clippy
+        working-directory: siteassure/src-tauri
+        run: cargo clippy -p siteassure --no-deps --all-targets -- -D warnings
+
+      - name: Rust tests (audit chain + units)
+        working-directory: siteassure/src-tauri
+        run: cargo test -p siteassure

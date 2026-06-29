@@ -1,0 +1,27 @@
+node_modules/
+dist/
+target/
+
+# OSHA pipeline raw pulls
+data/raw/
+
+# Staged STT models + managed binaries — staged per machine, never in the repo (see README).
+# Anchored to repo root so they never match vendored source dirs (e.g. wisper-core/src/audio).
+*.bin
+/models/
+/bin/ffmpeg*
+/bin/yt-dlp*
+
+# Local SQLite store — PII / evidentiary content, never commit (see DATA_POLICY.md).
+# Runtime captured audio lives in the OS app-data dir, NOT the repo, so it needs no ignore here.
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store
