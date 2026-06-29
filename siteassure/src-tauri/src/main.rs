@@ -6,6 +6,7 @@ use tauri::Manager;
 
 mod audit;
 mod commands;
+mod crypto;
 mod db;
 mod flags;
 mod mic;
@@ -28,7 +29,8 @@ fn main() {
             std::fs::create_dir_all(data.join("audio")).ok();
             // Open SQLite + apply schema; manage the connection for the record/audit commands.
             let conn = db::open(&data.join("siteassure.db")).map_err(std::io::Error::other)?;
-            app.manage(db::Db(std::sync::Mutex::new(conn)));
+            let key = crypto::load_or_create_key().map_err(std::io::Error::other)?;
+            app.manage(db::Db { conn: std::sync::Mutex::new(conn), key });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

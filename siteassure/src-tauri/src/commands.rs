@@ -139,9 +139,9 @@ pub fn stop_recording(
 /// 03 Confirm & save: persist a new record (version 1) + write the 'create' audit entry.
 #[tauri::command]
 pub fn save_record(db: tauri::State<'_, crate::db::Db>, rec: NewRecord) -> Result<String, String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let now = chrono::Utc::now().to_rfc3339();
-    crate::db::save_record(&conn, &rec, &now)
+    crate::db::save_record(&conn, &db.key, &rec, &now)
 }
 
 /// 05 Amend: new version (prior preserved) + 'amend' audit entry. Reason required.
@@ -152,22 +152,22 @@ pub fn amend_record(
     changes: serde_json::Value,
     reason: String,
 ) -> Result<i64, String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let now = chrono::Utc::now().to_rfc3339();
-    crate::db::amend_record(&conn, &id, &changes, &reason, &now)
+    crate::db::amend_record(&conn, &db.key, &id, &changes, &reason, &now)
 }
 
 /// 05 Record view: full record + version history + audit-verify result.
 #[tauri::command]
 pub fn get_record(db: tauri::State<'_, crate::db::Db>, id: String) -> Result<RecordWithHistory, String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
-    crate::db::get_record(&conn, &id)
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    crate::db::get_record(&conn, &db.key, &id)
 }
 
 /// 01 Home / Records list.
 #[tauri::command]
 pub fn list_records(db: tauri::State<'_, crate::db::Db>) -> Result<Vec<serde_json::Value>, String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
     crate::db::list_records(&conn)
 }
 
