@@ -2,7 +2,7 @@
 //! and every create/amend appends exactly one audit_log entry via audit::append (the sole writer).
 use std::path::Path;
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::{json, Value};
 
 use crate::audit;
@@ -126,3 +126,151 @@ pub fn get_record(conn: &Connection, id: &str) -> Result<RecordWithHistory, Stri
         audit_verified,
     })
 }
+
+/// 05 Amend: write a NEW version (prior preserved, raw transcript immutable), bump current_ver,
+/// and append the 'amend' audit entry. A reason is required. `changes` may carry camelCase keys
+/// `narrative` / `fieldsJson` / `flagsJson`; anything omitted carries forward from the prior version.
+pub fn amend_record(
+    conn: &Connection,
+    id: &str,
+    changes: &Value,
+    reason: &str,
+    now: &str,
+) -> Result<i64, String> {
+    if reason.trim().is_empty() {
+        return Err("an amendment reason is required".into());
+    }
+
+    let (cur_ver, transcript, narrative, fields_json, flags_json): (
+        i64,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+    ) = conn
+        .query_row(
+            "SELECT version, transcript, narrative, fields_json, flags_json
+             FROM record_versions WHERE record_id = ?1 ORDER BY version DESC LIMIT 1",
+            params![id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("record not found: {id}"))?;
+
+    let new_ver = cur_ver + 1;
+    // Apply only the supplied keys; the raw transcript never changes.
+    let apply = |key: &str, prior: Option<String>| -> Option<String> {
+        changes
+            .get(key)
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .or(prior)
+    };
+    let new_narrative = apply("narrative", narrative);
+    let new_fields = apply("fieldsJson", fields_json);
+    let new_flags = apply("flagsJson", flags_json);
+
+    conn.execute(
+        "INSERT INTO record_versions
+           (record_id, version, created_at, author, reason, transcript, narrative, fields_json, flags_json, status)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'final')",
+        params![id, new_ver, now, ACTOR, reason, transcript, new_narrative, new_fields, new_flags],
+    )
+    .map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "UPDATE records SET current_ver = ?1 WHERE id = ?2",
+        params![new_ver, id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    let payload = json!({
+        "record_id": id,
+        "version": new_ver,
+        "reason": reason,
+        "narrative": new_narrative,
+        "fields": new_fields,
+        "flags": new_flags,
+    })
+    .to_string();
+    audit::append(
+        conn,
+        now,
+        ACTOR,
+        Some("author"),
+        "amend",
+        Some(id),
+        Some(new_ver),
+        payload.as_bytes(),
+    )?;
+
+    Ok(new_ver)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::commands::NewRecord;
+
+    fn mem() -> Connection {
+        let c = Connection::open_in_memory().unwrap();
+        c.execute_batch(SCHEMA).unwrap();
+        c
+    }
+
+    fn sample() -> NewRecord {
+        NewRecord {
+            kind: "daily_log".into(),
+            site: Some("Site A".into()),
+            trade_naics: Some("238160".into()),
+            transcript: "raw spoken words".into(),
+            narrative: "clean narrative".into(),
+            fields_json: "{}".into(),
+            flags_json: "[]".into(),
+        }
+    }
+
+    #[test]
+    fn save_then_amend_preserves_prior_and_verifies() {
+        let c = mem();
+        let id = save_record(&c, &sample(), "2026-01-01T00:00:00Z").unwrap();
+        let v2 = amend_record(
+            &c,
+            &id,
+            &json!({ "narrative": "corrected narrative" }),
+            "fix a typo",
+            "2026-01-02T00:00:00Z",
+        )
+        .unwrap();
+        assert_eq!(v2, 2);
+
+        let rwh = get_record(&c, &id).unwrap();
+        assert_eq!(rwh.versions.len(), 2);
+        // Raw transcript is immutable across versions.
+        assert_eq!(rwh.versions[0]["transcript"], "raw spoken words");
+        assert_eq!(rwh.versions[1]["transcript"], "raw spoken words");
+        assert_eq!(rwh.versions[1]["narrative"], "corrected narrative");
+        assert!(rwh.audit_verified);
+    }
+
+    #[test]
+    fn amend_requires_a_reason() {
+        let c = mem();
+        let id = save_record(&c, &sample(), "t").unwrap();
+        assert!(amend_record(&c, &id, &json!({}), "   ", "t").is_err());
+    }
+
+    #[test]
+    fn tampering_a_stored_row_breaks_verify() {
+        let c = mem();
+        let id = save_record(&c, &sample(), "t").unwrap();
+        c.execute(
+            "UPDATE audit_log SET payload_hash = 'deadbeef' WHERE record_id = ?1",
+            params![id],
+        )
+        .unwrap();
+        assert!(!audit::verify_db(&c).unwrap());
+    }
+}
+

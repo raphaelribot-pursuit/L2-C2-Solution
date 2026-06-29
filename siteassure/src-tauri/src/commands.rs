@@ -143,11 +143,17 @@ pub fn save_record(db: tauri::State<'_, crate::db::Db>, rec: NewRecord) -> Resul
     crate::db::save_record(&conn, &rec, &now)
 }
 
-/// 05 Amend: new version (prior preserved) + 'amend' audit entry. Reason required. (Phase 5)
+/// 05 Amend: new version (prior preserved) + 'amend' audit entry. Reason required.
 #[tauri::command]
-pub async fn amend_record(id: String, changes: serde_json::Value, reason: String) -> Result<i64, String> {
-    let _ = (id, changes, reason);
-    Err("not implemented".into())
+pub fn amend_record(
+    db: tauri::State<'_, crate::db::Db>,
+    id: String,
+    changes: serde_json::Value,
+    reason: String,
+) -> Result<i64, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let now = chrono::Utc::now().to_rfc3339();
+    crate::db::amend_record(&conn, &id, &changes, &reason, &now)
 }
 
 /// 05 Record view: full record + version history + audit-verify result.
