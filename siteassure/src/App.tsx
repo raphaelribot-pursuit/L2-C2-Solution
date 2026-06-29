@@ -9,8 +9,9 @@ import CaptureScreen from "./screens/CaptureScreen";
 import ConfirmScreen from "./screens/ConfirmScreen";
 import FlagsScreen from "./screens/FlagsScreen";
 import RecordScreen from "./screens/RecordScreen";
+import DashboardScreen from "./screens/DashboardScreen";
 
-type Screen = "home" | "capture" | "confirm" | "flags" | "record";
+type Screen = "home" | "capture" | "confirm" | "flags" | "record" | "dashboard";
 
 const emptyDraft = (kind: RecordKind): Draft => ({
   kind,
@@ -33,6 +34,7 @@ export default function App() {
         <HomeScreen
           onNew={(kind) => { setDraft(emptyDraft(kind)); setScreen("capture"); }}
           onOpen={(id) => { setRecordId(id); setScreen("record"); }}
+          onTrends={() => setScreen("dashboard")}
         />
       )}
       {screen === "capture" && (
@@ -49,6 +51,9 @@ export default function App() {
       )}
       {screen === "record" && recordId && (
         <RecordScreen id={recordId} onHome={() => setScreen("home")} />
+      )}
+      {screen === "dashboard" && (
+        <DashboardScreen onHome={() => setScreen("home")} />
       )}
     </ThemeProvider>
   );
