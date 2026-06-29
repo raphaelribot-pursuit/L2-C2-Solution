@@ -1,7 +1,8 @@
 // 01 Home / new record.
 import { useEffect, useState } from "react";
-import { Box, Stack, Typography, Chip, List, ListItemButton, ListItemText, Fab } from "@mui/material";
+import { Box, Stack, Typography, Chip, Button, List, ListItemButton, ListItemText, Fab } from "@mui/material";
 import MicIcon from "@mui/icons-material/Mic";
+import BarChartIcon from "@mui/icons-material/BarChart";
 import { listRecords } from "../lib/api";
 import type { RecordKind } from "../lib/types";
 
@@ -14,7 +15,7 @@ const KINDS: { k: RecordKind; label: string }[] = [
 
 type RecordRow = { id: string; kind: string; createdAt: string; currentVersion: number; site?: string };
 
-export default function HomeScreen({ onNew, onOpen }: { onNew: (k: RecordKind) => void; onOpen: (id: string) => void }) {
+export default function HomeScreen({ onNew, onOpen, onTrends }: { onNew: (k: RecordKind) => void; onOpen: (id: string) => void; onTrends: () => void }) {
   const [kind, setKind] = useState<RecordKind>("daily_log");
   const [records, setRecords] = useState<RecordRow[]>([]);
   const [err, setErr] = useState<string>();
@@ -25,8 +26,13 @@ export default function HomeScreen({ onNew, onOpen }: { onNew: (k: RecordKind) =
 
   return (
     <Box sx={{ p: 2, pb: 12 }}>
-      <Typography variant="h2">SiteAssure</Typography>
-      <Typography variant="body2" color="text.secondary" gutterBottom>Speak it. Flag it. Prove it.</Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+        <Box>
+          <Typography variant="h2">SiteAssure</Typography>
+          <Typography variant="body2" color="text.secondary">Speak it. Flag it. Prove it.</Typography>
+        </Box>
+        <Button size="small" startIcon={<BarChartIcon />} onClick={onTrends}>Trends</Button>
+      </Stack>
 
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ my: 2 }}>
         {KINDS.map(({ k, label }) => (
