@@ -317,6 +317,7 @@ mod tests {
     #[test]
     fn save_with_audio_hashes_it_into_the_chain() {
         let c = mem();
+        // nosemgrep: rust.lang.security.temp-dir.temp-dir -- test-only fixture, unique uuid filename
         let path = std::env::temp_dir().join(format!("siteassure_test_{}.wav", uuid::Uuid::new_v4()));
         std::fs::write(&path, b"FAKE WAV BYTES").unwrap();
 
