@@ -45,3 +45,15 @@ export interface RecordWithHistory {
   id: string; kind: RecordKind; createdAt: string; createdBy: string;
   currentVersion: number; versions: RecordVersion[]; auditVerified: boolean;
 }
+
+// In-flight capture draft shared across the capture → confirm → flags screens (src/App.tsx).
+export interface DraftFields { date?: string; site?: string; crew?: string; tradeNaics?: string; }
+export interface Draft {
+  kind: RecordKind;
+  audioPath?: string;
+  transcript: string;            // raw, immutable
+  segments: TranscriptSegment[];
+  narrative: string;             // cleaned / edited
+  fields: DraftFields;
+  flags: SafetyFlag[];
+}
