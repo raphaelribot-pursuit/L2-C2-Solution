@@ -169,3 +169,9 @@ pub fn list_records(db: tauri::State<'_, crate::db::Db>) -> Result<Vec<serde_jso
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     crate::db::list_records(&conn)
 }
+
+/// 04 Safety flags: deterministic, offline scan over the narrative + OSHA trade context.
+#[tauri::command]
+pub fn scan_flags(narrative: String, trade_naics: Option<String>) -> Vec<crate::flags::Flag> {
+    crate::flags::scan(&narrative, trade_naics.as_deref())
+}

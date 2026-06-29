@@ -40,6 +40,7 @@ fn main() {
             commands::amend_record,
             commands::get_record,
             commands::list_records,
+            commands::scan_flags,
         ])
         .run(tauri::generate_context!())
         .expect("error while running SiteAssure");

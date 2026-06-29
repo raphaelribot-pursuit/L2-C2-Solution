@@ -8,6 +8,9 @@ export interface Transcript { text: string; segments: TranscriptSegment[]; }
 // Live mic capture status (src-tauri/src/mic.rs MicRecordingStatus).
 export interface MicStatus { peak: number; durationMs: number; deviceName: string; }
 
+// 04 flag-engine output (src-tauri/src/flags.rs Flag). The UI wraps each as a SafetyFlag (adds status/note).
+export interface FlagHit { code: string; title: string; rationale: string; oshaContext?: string; }
+
 export interface SafetyFlag {
   code: string;
   title: string;

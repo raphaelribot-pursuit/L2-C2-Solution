@@ -22,7 +22,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install cargo-audit --locked
+      - name: install cargo-audit (retry transient crates.io failures)
+        run: cargo install cargo-audit --locked || (sleep 8 && cargo install cargo-audit --locked)
       - name: cargo audit
         working-directory: siteassure
         run: |
