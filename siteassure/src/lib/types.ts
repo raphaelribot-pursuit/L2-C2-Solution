@@ -11,6 +11,18 @@ export interface MicStatus { peak: number; durationMs: number; deviceName: strin
 // 04 flag-engine output (src-tauri/src/flags.rs Flag). The UI wraps each as a SafetyFlag (adds status/note).
 export interface FlagHit { code: string; title: string; rationale: string; oshaContext?: string; }
 
+// Payload for save_record (src-tauri NewRecord, camelCase). transcript = the raw transcript (immutable).
+export interface NewRecordInput {
+  kind: RecordKind;
+  site?: string;
+  tradeNaics?: string;
+  transcript: string;
+  narrative: string;
+  fieldsJson: string;
+  flagsJson: string;
+  audioPath?: string;            // retained WAV path from stopRecording() — hashed into the audit chain
+}
+
 export interface SafetyFlag {
   code: string;
   title: string;

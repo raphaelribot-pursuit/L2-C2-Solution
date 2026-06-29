@@ -32,6 +32,7 @@ pub struct NewRecord {
     pub narrative: String,
     pub fields_json: String,
     pub flags_json: String,
+    pub audio_path: Option<String>, // retained source WAV (hashed into the chain on save)
 }
 
 #[derive(Serialize, Deserialize)]

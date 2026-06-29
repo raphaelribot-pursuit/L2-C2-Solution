@@ -26,6 +26,15 @@ pub fn open(path: &Path) -> Result<Connection, String> {
 pub fn save_record(conn: &Connection, rec: &NewRecord, now: &str) -> Result<String, String> {
     let id = uuid::Uuid::new_v4().to_string();
 
+    // Hash the retained source audio (the tamper-proof backup), if one was captured.
+    let audio_sha256 = match rec.audio_path.as_deref() {
+        Some(p) if !p.is_empty() => {
+            let bytes = std::fs::read(p).map_err(|e| format!("read audio {p}: {e}"))?;
+            Some(audit::sha256_hex(&bytes))
+        }
+        _ => None,
+    };
+
     conn.execute(
         "INSERT INTO records (id, kind, created_at, created_by, current_ver, site, trade_naics)
          VALUES (?1, ?2, ?3, ?4, 1, ?5, ?6)",
@@ -35,12 +44,13 @@ pub fn save_record(conn: &Connection, rec: &NewRecord, now: &str) -> Result<Stri
 
     conn.execute(
         "INSERT INTO record_versions
-           (record_id, version, created_at, author, reason, transcript, narrative, fields_json, flags_json, status)
-         VALUES (?1, 1, ?2, ?3, NULL, ?4, ?5, ?6, ?7, 'final')",
-        params![id, now, ACTOR, rec.transcript, rec.narrative, rec.fields_json, rec.flags_json],
+           (record_id, version, created_at, author, reason, transcript, narrative, fields_json, flags_json, audio_path, audio_sha256, status)
+         VALUES (?1, 1, ?2, ?3, NULL, ?4, ?5, ?6, ?7, ?8, ?9, 'final')",
+        params![id, now, ACTOR, rec.transcript, rec.narrative, rec.fields_json, rec.flags_json, rec.audio_path, audio_sha256],
     )
     .map_err(|e| e.to_string())?;
 
+    // 'create' audit entry — the record content.
     let payload = json!({
         "record_id": id,
         "version": 1,
@@ -51,16 +61,14 @@ pub fn save_record(conn: &Connection, rec: &NewRecord, now: &str) -> Result<Stri
         "flags": rec.flags_json,
     })
     .to_string();
-    audit::append(
-        conn,
-        now,
-        ACTOR,
-        Some("author"),
-        "create",
-        Some(id.as_str()),
-        Some(1),
-        payload.as_bytes(),
-    )?;
+    audit::append(conn, now, ACTOR, Some("author"), "create", Some(id.as_str()), Some(1), payload.as_bytes())?;
+
+    // 'capture' audit entry — binds the retained audio's hash into the SAME chain, so a disputed
+    // transcript is provable against the audio (see DATA_POLICY.md).
+    if let Some(ref h) = audio_sha256 {
+        let cap = json!({ "record_id": id, "version": 1, "audio_sha256": h }).to_string();
+        audit::append(conn, now, ACTOR, Some("author"), "capture", Some(id.as_str()), Some(1), cap.as_bytes())?;
+    }
 
     Ok(id)
 }
@@ -228,6 +236,7 @@ mod tests {
             narrative: "clean narrative".into(),
             fields_json: "{}".into(),
             flags_json: "[]".into(),
+            audio_path: None,
         }
     }
 
@@ -271,6 +280,38 @@ mod tests {
         )
         .unwrap();
         assert!(!audit::verify_db(&c).unwrap());
+    }
+
+    #[test]
+    fn save_with_audio_hashes_it_into_the_chain() {
+        let c = mem();
+        let path = std::env::temp_dir().join(format!("siteassure_test_{}.wav", uuid::Uuid::new_v4()));
+        std::fs::write(&path, b"FAKE WAV BYTES").unwrap();
+
+        let mut rec = sample();
+        rec.audio_path = Some(path.to_string_lossy().into_owned());
+        let id = save_record(&c, &rec, "t").unwrap();
+
+        // stored hash equals sha256 of the file, and is committed to the chain via a 'capture' entry
+        let stored: String = c
+            .query_row(
+                "SELECT audio_sha256 FROM record_versions WHERE record_id = ?1",
+                params![id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(stored, audit::sha256_hex(b"FAKE WAV BYTES"));
+        let captures: i64 = c
+            .query_row(
+                "SELECT COUNT(*) FROM audit_log WHERE action = 'capture' AND record_id = ?1",
+                params![id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(captures, 1);
+        assert!(audit::verify_db(&c).unwrap());
+
+        std::fs::remove_file(&path).ok();
     }
 }
 
