@@ -175,6 +175,35 @@ pub fn model_status(models_dir: &Path) -> ModelStatus {
     model_status_for_tier(models_dir, None)
 }
 
+/// Ensure a usable GGML Whisper model exists under `models_dir`, downloading the
+/// requested starter tier when necessary.
+pub fn ensure_model_available(
+    models_dir: &Path,
+    tier_key: Option<&str>,
+    mut on_progress: impl FnMut(DownloadProgress),
+) -> Result<PathBuf, crate::WisperError> {
+    std::fs::create_dir_all(models_dir)
+        .map_err(|e| crate::WisperError::Fetch(e.to_string()))?;
+
+    let model = tier_key
+        .and_then(StarterModel::from_key)
+        .unwrap_or(StarterModel::LargeTurbo);
+    let preferred = models_dir.join(model.file_name());
+
+    if preferred.is_file() && model_file_valid(&preferred, model) {
+        return Ok(preferred);
+    }
+
+    let resolved = resolve_model_path(models_dir);
+    if resolved.is_file() && (resolved == preferred || model_file_valid(&resolved, model) || tier_key.is_none()) {
+        return Ok(resolved);
+    }
+
+    download_starter_model(models_dir, model, |progress| {
+        on_progress(progress);
+    })
+}
+
 /// Copy a user-selected `.bin` model into `models_dir`.
 pub fn import_model_file(source: &Path, models_dir: &Path) -> Result<PathBuf, crate::WisperError> {
     if !source.is_file() {
@@ -289,6 +318,20 @@ pub fn download_all_starter_models(
 mod tests {
     use super::*;
     use std::fs;
+
+    #[test]
+    fn ensure_model_available_reuses_existing_model_file() {
+        let dir = std::env::temp_dir().join(format!("wisper-model-test-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&dir).unwrap();
+        let bin = dir.join("ggml-large-v3-turbo.bin");
+        let padding = vec![0u8; 500_000_001];
+        fs::write(&bin, &padding).unwrap();
+
+        let path = ensure_model_available(&dir, Some("large-turbo"), |_| {}).unwrap();
+        assert_eq!(path, bin);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn starter_model_from_key_aliases() {

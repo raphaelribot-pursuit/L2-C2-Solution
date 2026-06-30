@@ -1,6 +1,6 @@
 // 04 Safety flags — run the deterministic engine, accept/dismiss/note, then save the record.
 import { useEffect, useState } from "react";
-import { Box, Button, Stack, Typography, Card, CardContent, Chip, TextField } from "@mui/material";
+import { Box, Button, Stack, Typography, Card, CardContent, Chip, TextField, Paper } from "@mui/material";
 import { scanFlags, saveRecord } from "../lib/api";
 import type { Draft, SafetyFlag } from "../lib/types";
 
@@ -43,31 +43,53 @@ export default function FlagsScreen({ draft, setDraft, onSaved, onBack }: {
 
   return (
     <Box sx={{ p: 2, pb: 4 }}>
-      <Button onClick={onBack}>Back</Button>
+      <Button onClick={onBack} sx={{ mb: 2 }}>Back</Button>
       <Typography variant="h3" gutterBottom>Safety flags</Typography>
-      {flags.length === 0 && <Typography variant="body2" color="text.secondary">No flags raised.</Typography>}
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Deterministic OSHA-aware flag detection. Confirm or dismiss each finding before saving.
+      </Typography>
 
-      <Stack spacing={2} sx={{ my: 2 }}>
-        {flags.map((f, i) => (
-          <Card key={f.code + i} variant="outlined">
-            <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography variant="h3" sx={{ fontSize: 18 }}>{f.title}</Typography>
-                <Chip size="small" label={f.status}
-                  color={f.status === "accepted" ? "secondary" : f.status === "dismissed" ? "default" : "warning"} />
-              </Stack>
-              <Typography variant="body2" sx={{ mt: 1 }}>{f.rationale}</Typography>
-              {f.oshaContext && <Typography variant="caption" color="secondary.dark">{f.oshaContext}</Typography>}
-              <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                <Button size="small" variant="contained" color="secondary" onClick={() => setStatus(i, "accepted")}>Accept</Button>
-                <Button size="small" onClick={() => setStatus(i, "dismissed")}>Dismiss</Button>
-              </Stack>
-              <TextField size="small" fullWidth placeholder="Note…" value={f.note ?? ""}
-                onChange={(e) => setNote(i, e.target.value)} sx={{ mt: 1 }} />
-            </CardContent>
-          </Card>
-        ))}
-      </Stack>
+      {flags.length === 0 ? (
+        <Paper variant="outlined" sx={{ p: 3, mb: 3, bgcolor: "background.default" }}>
+          <Typography variant="subtitle2">No flags raised</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            The narrative did not match any safety patterns, or the capture is too short.
+          </Typography>
+        </Paper>
+      ) : (
+        <Stack spacing={2} sx={{ my: 2 }}>
+          {flags.map((f, i) => (
+            <Card key={f.code + i} variant="outlined" sx={{ borderColor: "grey.300" }}>
+              <CardContent>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                  <Box>
+                    <Typography variant="h3" sx={{ fontSize: 18 }}>{f.title}</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{f.rationale}</Typography>
+                  </Box>
+                  <Chip size="small" label={f.status} color={f.status === "accepted" ? "secondary" : f.status === "dismissed" ? "default" : "warning"} />
+                </Stack>
+                {f.oshaContext && (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                    {f.oshaContext}
+                  </Typography>
+                )}
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}>
+                  <Button size="small" variant="contained" color="secondary" onClick={() => setStatus(i, "accepted")}>Accept</Button>
+                  <Button size="small" variant="outlined" onClick={() => setStatus(i, "dismissed")}>Dismiss</Button>
+                </Stack>
+                <TextField
+                  size="small"
+                  fullWidth
+                  placeholder="Inspector note…"
+                  value={f.note ?? ""}
+                  onChange={(e) => setNote(i, e.target.value)}
+                  sx={{ mt: 2 }}
+                />
+              </CardContent>
+            </Card>
+          ))}
+        </Stack>
+      )}
 
       {err && <Typography color="error" variant="body2" sx={{ mb: 1 }}>{err}</Typography>}
       <Button variant="contained" color="secondary" fullWidth disabled={saving} onClick={save}>

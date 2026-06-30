@@ -1,9 +1,10 @@
 // 05 Record & audit history — verified badge, version history, amend-with-reason.
-import { useEffect, useState } from "react";
-import { Box, Button, Stack, Typography, Chip, Card, CardContent, TextField, Divider } from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
+import { Box, Button, Stack, Typography, Chip, Card, CardContent, TextField, Divider, Paper } from "@mui/material";
 import VerifiedIcon from "@mui/icons-material/Verified";
 import GppMaybeIcon from "@mui/icons-material/GppMaybe";
 import { getRecord, amendRecord } from "../lib/api";
+import { diffText } from "../lib/diff";
 import type { RecordWithHistory } from "../lib/types";
 
 export default function RecordScreen({ id, onHome }: { id: string; onHome: () => void }) {
@@ -23,6 +24,13 @@ export default function RecordScreen({ id, onHome }: { id: string; onHome: () =>
       .catch((e) => setErr(String(e)));
 
   useEffect(() => { load(); }, [id]);
+
+  const current = rec?.versions[rec.versions.length - 1];
+  const previous = rec?.versions[rec.versions.length - 2];
+  const diff = useMemo(() => {
+    if (!current) return [];
+    return diffText(previous?.narrative ?? current.narrative, narrative);
+  }, [previous?.narrative, current?.narrative, narrative]);
 
   const amend = async () => {
     if (!reason.trim()) { setErr("A reason is required to amend."); return; }
@@ -46,7 +54,7 @@ export default function RecordScreen({ id, onHome }: { id: string; onHome: () =>
 
   return (
     <Box sx={{ p: 2, pb: 4 }}>
-      <Button onClick={onHome}>Home</Button>
+      <Button onClick={onHome} sx={{ mb: 2 }}>Home</Button>
       <Stack direction="row" alignItems="center" spacing={1} sx={{ my: 1 }}>
         <Typography variant="h3">{rec.kind}</Typography>
         {rec.auditVerified ? (
@@ -59,12 +67,14 @@ export default function RecordScreen({ id, onHome }: { id: string; onHome: () =>
       <Typography variant="h3" sx={{ fontSize: 18, mt: 2 }}>Version history</Typography>
       <Stack spacing={1} sx={{ my: 1 }}>
         {rec.versions.map((v) => (
-          <Card key={v.version} variant="outlined">
+          <Card key={v.version} variant="outlined" sx={{ borderColor: "grey.300" }}>
             <CardContent>
-              <Typography variant="subtitle2">
-                v{v.version} · {v.author} · {new Date(v.createdAt).toLocaleString()}
-              </Typography>
-              {v.reason && <Typography variant="caption" color="secondary.dark">Reason: {v.reason}</Typography>}
+              <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                <Typography variant="subtitle2">
+                  v{v.version} · {v.author} · {new Date(v.createdAt).toLocaleString()}
+                </Typography>
+                {v.reason && <Typography variant="caption" color="text.secondary">Reason: {v.reason}</Typography>}
+              </Stack>
               <Typography variant="body2" sx={{ mt: 1, whiteSpace: "pre-wrap" }}>{v.narrative}</Typography>
             </CardContent>
           </Card>
@@ -73,6 +83,30 @@ export default function RecordScreen({ id, onHome }: { id: string; onHome: () =>
 
       <Divider sx={{ my: 2 }} />
       <Typography variant="h3" sx={{ fontSize: 18 }}>Amend</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Edit the cleaned narrative, then save with a required amendment reason.
+      </Typography>
+
+      <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: "background.default" }}>
+        <Typography variant="subtitle2" gutterBottom>Before / after diff</Typography>
+        <Typography component="div" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+          {diff.map((segment, idx) => (
+            <Box
+              component="span"
+              key={idx}
+              sx={{
+                color: segment.type === "removed" ? "error.main" : segment.type === "added" ? "success.dark" : "text.primary",
+                backgroundColor: segment.type === "same" ? "transparent" : segment.type === "removed" ? "rgba(244, 67, 54, 0.08)" : "rgba(56, 142, 60, 0.12)",
+                px: segment.type === "same" ? 0 : 0.4,
+                borderRadius: 0.5,
+              }}
+            >
+              {segment.text}
+            </Box>
+          ))}
+        </Typography>
+      </Paper>
+
       <TextField label="Narrative" multiline minRows={3} fullWidth value={narrative}
         onChange={(e) => setNarrative(e.target.value)} sx={{ my: 1 }} />
       <TextField label="Reason (required)" fullWidth value={reason}

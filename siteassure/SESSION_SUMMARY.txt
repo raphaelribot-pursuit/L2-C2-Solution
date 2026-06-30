@@ -1,0 +1,44 @@
+SiteAssure session summary
+=========================
+
+Date: 2026-06-29
+
+Implemented UI polish for the main SiteAssure workflow screens:
+- Capture screen: improved idle/recording/no-signal feedback and overall capture UX.
+- Confirm screen: added offline transcript parsing for core fields such as date, site, crew, and trade.
+- Flags screen: improved card layout, statuses, empty states, and note-taking UX.
+- Record screen: improved amendment preview and version-history presentation.
+- Dashboard screen: refreshed summary cards and visual hierarchy.
+
+Added supporting frontend helpers:
+- Transcript parsing logic in siteassure/src/lib/transcriptParse.ts
+- Amendment diff preview logic in siteassure/src/lib/diff.ts
+
+Resolved local build/startup issues for the macOS/Tauri workflow:
+- Fixed npm install issues caused by a missing Homebrew simdjson compatibility library.
+- Cleared a port conflict on port 5173 so Vite could start correctly.
+- Added a Cargo config environment setting to disable ggml native CPU optimization for AppleClang compatibility.
+- Verified the Rust/Tauri build path and the Vite frontend local preview.
+
+Fixed the transcription startup failure caused by a missing GGML Whisper model:
+- Added model preflight logic so the app checks for the expected GGML model file before transcription.
+- Implemented automatic provisioning via the existing starter-model download path when the model is missing.
+- Hooked this logic into the Tauri transcription command so recording can recover instead of failing immediately.
+- Added a regression test covering the model-availability path.
+
+Files changed in this session include:
+- siteassure/.cargo/config.toml
+- siteassure/src/screens/CaptureScreen.tsx
+- siteassure/src/screens/ConfirmScreen.tsx
+- siteassure/src/screens/FlagsScreen.tsx
+- siteassure/src/screens/RecordScreen.tsx
+- siteassure/src/screens/DashboardScreen.tsx
+- siteassure/src/lib/transcriptParse.ts
+- siteassure/src/lib/diff.ts
+- siteassure/wisper-core/src/model.rs
+- siteassure/wisper-core/src/lib.rs
+- siteassure/src-tauri/src/commands.rs
+
+Verification performed:
+- Rust/Tauri build: cargo build -p siteassure --quiet && echo BUILD_OK
+- Frontend preview: curl -I http://localhost:5173/
