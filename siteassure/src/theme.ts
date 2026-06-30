@@ -10,16 +10,37 @@ export const tokens = {
 export const theme = createTheme({
   palette: {
     primary:   { main: tokens.steel, dark: tokens.steelInk },
-    secondary: { main: tokens.amber, dark: tokens.amberInk },  // amber = the one sharp accent (flags / active / "prove it")
+    secondary: { main: tokens.amber, dark: tokens.amberInk },
     background:{ default: tokens.paper, paper: "#FFFFFF" },
     text:      { primary: tokens.charcoal, secondary: tokens.muted },
+    success: { main: "#2D7A45", contrastText: "#FFFFFF" },
   },
   typography: {
     fontFamily: "Inter, system-ui, sans-serif",
     h1: { fontFamily: "'Roboto Slab', serif", fontWeight: 700 },
     h2: { fontFamily: "'Roboto Slab', serif", fontWeight: 700 },
     h3: { fontFamily: "'Roboto Slab', serif", fontWeight: 600 },
+    h4: { fontFamily: "'Roboto Slab', serif", fontWeight: 600 },
+    h5: { fontFamily: "'Roboto Slab', serif", fontWeight: 600 },
+    h6: { fontFamily: "'Roboto Slab', serif", fontWeight: 600 },
     button: { textTransform: "none", fontWeight: 600 },
   },
   shape: { borderRadius: 10 },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: { boxShadow: "none", borderRadius: 999 },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: { boxShadow: "0 10px 30px rgba(17, 24, 39, 0.06)" },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: { fontWeight: 600 },
+      },
+    },
+  },
 });
