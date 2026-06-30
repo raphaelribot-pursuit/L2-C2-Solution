@@ -29,7 +29,8 @@ export const theme = createTheme({
   components: {
     MuiButton: {
       styleOverrides: {
-        root: { boxShadow: "none", borderRadius: 999 },
+        // Squared, engineering-ledger buttons (PRD §4a) rather than SaaS pills.
+        root: { boxShadow: "none", borderRadius: 8 },
       },
     },
     MuiPaper: {
