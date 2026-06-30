@@ -10,6 +10,7 @@ mod crypto;
 mod db;
 mod flags;
 mod mic;
+mod setup;
 
 /// Shared app state: the active mic recorder (None when idle).
 pub struct AppState {
@@ -43,6 +44,9 @@ fn main() {
             commands::get_record,
             commands::list_records,
             commands::scan_flags,
+            setup::setup_status,
+            setup::download_model,
+            setup::download_ffmpeg_bin,
         ])
         .run(tauri::generate_context!())
         .expect("error while running SiteAssure");

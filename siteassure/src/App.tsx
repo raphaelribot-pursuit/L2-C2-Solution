@@ -10,8 +10,9 @@ import ConfirmScreen from "./screens/ConfirmScreen";
 import FlagsScreen from "./screens/FlagsScreen";
 import RecordScreen from "./screens/RecordScreen";
 import DashboardScreen from "./screens/DashboardScreen";
+import SetupScreen from "./screens/SetupScreen";
 
-type Screen = "home" | "capture" | "confirm" | "flags" | "record" | "dashboard";
+type Screen = "setup" | "home" | "capture" | "confirm" | "flags" | "record" | "dashboard";
 
 const emptyDraft = (kind: RecordKind): Draft => ({
   kind,
@@ -23,13 +24,16 @@ const emptyDraft = (kind: RecordKind): Draft => ({
 });
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("home");
+  const [screen, setScreen] = useState<Screen>("setup");
   const [draft, setDraft] = useState<Draft>(emptyDraft("daily_log"));
   const [recordId, setRecordId] = useState<string | null>(null);
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      {screen === "setup" && (
+        <SetupScreen onReady={() => setScreen("home")} />
+      )}
       {screen === "home" && (
         <HomeScreen
           onNew={(kind) => { setDraft(emptyDraft(kind)); setScreen("capture"); }}

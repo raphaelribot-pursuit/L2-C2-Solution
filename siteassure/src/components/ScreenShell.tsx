@@ -36,11 +36,11 @@ export default function ScreenShell({
           bgcolor: "#FFFFFF",
         }}
       >
-        <Box sx={{ bgcolor: "grey.900", color: "common.white", px: { xs: 2, md: 3 }, py: { xs: 2.5, md: 3 } }}>
+        <Box sx={{ bgcolor: "#1E242A", color: "common.white", px: { xs: 2, md: 3 }, py: { xs: 2.5, md: 3 } }}>
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5}>
             <Box>
               {eyebrow && (
-                <Typography variant="overline" sx={{ display: "block", color: "grey.400", letterSpacing: "0.24em" }}>
+                <Typography variant="overline" sx={{ display: "block", color: "#F4A41E", fontWeight: 700, letterSpacing: "0.24em" }}>
                   {eyebrow}
                 </Typography>
               )}

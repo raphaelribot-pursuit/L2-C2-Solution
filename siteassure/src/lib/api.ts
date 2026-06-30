@@ -1,5 +1,6 @@
 // Thin wrappers over the Tauri commands. Mirrors src-tauri/src/commands.rs (camelCase contract).
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import type { Transcript, RecordWithHistory, MicStatus, FlagHit, NewRecordInput } from "./types";
 
 // 02 Voice capture (mic via cpal + whisper.cpp, all on-device).
@@ -17,3 +18,13 @@ export const listRecords  = ()                                             => in
 // 04 Safety flags (deterministic, offline rules + OSHA context).
 export const scanFlags = (narrative: string, tradeNaics?: string) =>
   invoke<FlagHit[]>("scan_flags", { narrative, tradeNaics });
+
+// First-run setup — on-device dependency install (voice model + ffmpeg) with progress events.
+export interface SetupStatus { modelReady: boolean; ffmpegReady: boolean; modelHint: string; ffmpegHint: string; }
+export interface SetupProgress { component: "model" | "ffmpeg"; percent: number | null; status: string; }
+
+export const setupStatus    = ()              => invoke<SetupStatus>("setup_status");
+export const downloadModel  = (tier?: string) => invoke<void>("download_model", { tier });
+export const downloadFfmpeg = ()              => invoke<void>("download_ffmpeg_bin");
+export const onSetupProgress = (cb: (p: SetupProgress) => void) =>
+  listen<SetupProgress>("setup-progress", (e) => cb(e.payload));
