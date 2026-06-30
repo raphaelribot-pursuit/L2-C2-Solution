@@ -33,9 +33,10 @@ pub use hardware::{
     ModelRecommendation, SystemProfile,
 };
 pub use model::{
-    download_all_starter_models, download_starter_model, import_model_file, installed_model_keys,
-    is_model_file_valid, model_status, model_status_for_tier, resolve_model_path,
-    resolve_model_path_for_tier, ModelStatus, StarterModel,
+    download_all_starter_models, download_starter_model, ensure_model_available,
+    import_model_file, installed_model_keys, is_model_file_valid, model_status,
+    model_status_for_tier, resolve_model_path, resolve_model_path_for_tier, ModelStatus,
+    StarterModel,
 };
 pub use audio::save_mic_wav;
 pub use ffmpeg_tools::{

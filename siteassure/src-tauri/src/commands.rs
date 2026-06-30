@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tauri::Manager;
-use wisper_core::{compiled_gpu_backend, resolve_model_path, transcribe_file, ComputeBackend};
+use wisper_core::{compiled_gpu_backend, ensure_model_available, transcribe_file, ComputeBackend};
 
 use crate::mic::{MicRecorder, MicRecordingStatus};
 
@@ -58,7 +58,8 @@ pub fn transcribe(app: tauri::AppHandle, audio_path: String) -> Result<Transcrip
         return Err(format!("audio file not found: {audio_path}"));
     }
 
-    let model = resolve_model_path(&models_dir(&app)?);
+    let model = ensure_model_available(&models_dir(&app)?, None, |_| {})
+        .map_err(|e| e.to_string())?;
     // Request GPU when a GPU backend is compiled in; transcribe_with_engine falls back to CPU on error.
     let backend = if compiled_gpu_backend().is_some() {
         ComputeBackend::Gpu

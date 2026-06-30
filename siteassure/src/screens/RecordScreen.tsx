@@ -1,9 +1,11 @@
 // 05 Record & audit history — verified badge, version history, amend-with-reason.
-import { useEffect, useState } from "react";
-import { Box, Button, Stack, Typography, Chip, Card, CardContent, TextField, Divider } from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
+import { Box, Button, Card, CardContent, Chip, Divider, Paper, Stack, TextField, Typography } from "@mui/material";
 import VerifiedIcon from "@mui/icons-material/Verified";
 import GppMaybeIcon from "@mui/icons-material/GppMaybe";
+import ScreenShell from "../components/ScreenShell";
 import { getRecord, amendRecord } from "../lib/api";
+import { diffText } from "../lib/diff";
 import type { RecordWithHistory } from "../lib/types";
 
 export default function RecordScreen({ id, onHome }: { id: string; onHome: () => void }) {
@@ -24,6 +26,13 @@ export default function RecordScreen({ id, onHome }: { id: string; onHome: () =>
 
   useEffect(() => { load(); }, [id]);
 
+  const current = rec?.versions[rec.versions.length - 1];
+  const previous = rec?.versions[rec.versions.length - 2];
+  const diff = useMemo(() => {
+    if (!current) return [];
+    return diffText(previous?.narrative ?? current.narrative, narrative);
+  }, [previous?.narrative, current?.narrative, narrative]);
+
   const amend = async () => {
     if (!reason.trim()) { setErr("A reason is required to amend."); return; }
     setAmending(true); setErr(undefined);
@@ -37,50 +46,86 @@ export default function RecordScreen({ id, onHome }: { id: string; onHome: () =>
 
   if (!rec) {
     return (
-      <Box sx={{ p: 2 }}>
-        <Button onClick={onHome}>Home</Button>
-        {err && <Typography color="error">{err}</Typography>}
-      </Box>
+      <ScreenShell title="Record" subtitle="Loading the latest audit trail." eyebrow="Inspection record" action={<Button variant="outlined" onClick={onHome} sx={{ color: "common.white", borderColor: "rgba(255,255,255,0.2)" }}>Home</Button>}>
+        <Typography color="error">{err}</Typography>
+      </ScreenShell>
     );
   }
 
   return (
-    <Box sx={{ p: 2, pb: 4 }}>
-      <Button onClick={onHome}>Home</Button>
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ my: 1 }}>
-        <Typography variant="h3">{rec.kind}</Typography>
-        {rec.auditVerified ? (
-          <Chip icon={<VerifiedIcon />} color="secondary" size="small" label="Audit verified" />
-        ) : (
-          <Chip icon={<GppMaybeIcon />} color="error" size="small" label="Tampering detected" />
-        )}
-      </Stack>
+    <ScreenShell
+      title={`${rec.kind} record`}
+      subtitle="Evidence trail, version history, and amendment workflow in one place."
+      eyebrow="Audit review"
+      action={(
+        <Button variant="outlined" onClick={onHome} sx={{ color: "common.white", borderColor: "rgba(255,255,255,0.2)" }}>
+          Home
+        </Button>
+      )}
+    >
+      <Stack spacing={3} sx={{ pb: 2 }}>
+        <Paper variant="outlined" sx={{ p: { xs: 2.2, md: 2.6 }, borderRadius: 3, bgcolor: "grey.50" }}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5}>
+            <Box>
+              <Typography variant="overline" color="text.secondary">Current status</Typography>
+              <Typography variant="h5">{rec.kind}</Typography>
+            </Box>
+            {rec.auditVerified ? (
+              <Chip icon={<VerifiedIcon />} color="secondary" size="small" label="Audit verified" />
+            ) : (
+              <Chip icon={<GppMaybeIcon />} color="error" size="small" label="Tampering detected" />
+            )}
+          </Stack>
+        </Paper>
 
-      <Typography variant="h3" sx={{ fontSize: 18, mt: 2 }}>Version history</Typography>
-      <Stack spacing={1} sx={{ my: 1 }}>
-        {rec.versions.map((v) => (
-          <Card key={v.version} variant="outlined">
-            <CardContent>
-              <Typography variant="subtitle2">
-                v{v.version} · {v.author} · {new Date(v.createdAt).toLocaleString()}
-              </Typography>
-              {v.reason && <Typography variant="caption" color="secondary.dark">Reason: {v.reason}</Typography>}
-              <Typography variant="body2" sx={{ mt: 1, whiteSpace: "pre-wrap" }}>{v.narrative}</Typography>
-            </CardContent>
-          </Card>
-        ))}
-      </Stack>
+        <Paper variant="outlined" sx={{ p: { xs: 2.2, md: 2.6 }, borderRadius: 3 }}>
+          <Typography variant="h6">Version history</Typography>
+          <Stack spacing={1.5} sx={{ mt: 2 }}>
+            {rec.versions.map((v) => (
+              <Card key={v.version} variant="outlined" sx={{ borderColor: "divider", borderRadius: 2 }}>
+                <CardContent>
+                  <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                    <Typography variant="subtitle2">v{v.version} · {v.author} · {new Date(v.createdAt).toLocaleString()}</Typography>
+                    {v.reason && <Typography variant="caption" color="text.secondary">Reason: {v.reason}</Typography>}
+                  </Stack>
+                  <Typography variant="body2" sx={{ mt: 1, whiteSpace: "pre-wrap" }}>{v.narrative}</Typography>
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
+        </Paper>
 
-      <Divider sx={{ my: 2 }} />
-      <Typography variant="h3" sx={{ fontSize: 18 }}>Amend</Typography>
-      <TextField label="Narrative" multiline minRows={3} fullWidth value={narrative}
-        onChange={(e) => setNarrative(e.target.value)} sx={{ my: 1 }} />
-      <TextField label="Reason (required)" fullWidth value={reason}
-        onChange={(e) => setReason(e.target.value)} sx={{ mb: 1 }} />
-      {err && <Typography color="error" variant="body2" sx={{ mb: 1 }}>{err}</Typography>}
-      <Button variant="contained" color="secondary" disabled={amending} onClick={amend}>
-        {amending ? "Amending…" : "Save amendment"}
-      </Button>
-    </Box>
+        <Paper variant="outlined" sx={{ p: { xs: 2.2, md: 2.6 }, borderRadius: 3 }}>
+          <Typography variant="h6">Amend record</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Edit the cleaned narrative, then save with a required amendment reason.
+          </Typography>
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="subtitle2" gutterBottom>Before / after diff</Typography>
+          <Typography component="div" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word", mt: 1 }}>
+            {diff.map((segment, idx) => (
+              <Box
+                component="span"
+                key={idx}
+                sx={{
+                  color: segment.type === "removed" ? "error.main" : segment.type === "added" ? "success.dark" : "text.primary",
+                  backgroundColor: segment.type === "same" ? "transparent" : segment.type === "removed" ? "rgba(244, 67, 54, 0.08)" : "rgba(56, 142, 60, 0.12)",
+                  px: segment.type === "same" ? 0 : 0.4,
+                  borderRadius: 0.5,
+                }}
+              >
+                {segment.text}
+              </Box>
+            ))}
+          </Typography>
+          <TextField label="Narrative" multiline minRows={3} fullWidth value={narrative} onChange={(e) => setNarrative(e.target.value)} sx={{ my: 2 }} />
+          <TextField label="Reason (required)" fullWidth value={reason} onChange={(e) => setReason(e.target.value)} />
+          {err && <Typography color="error" variant="body2" sx={{ mt: 1 }}>{err}</Typography>}
+          <Button variant="contained" color="secondary" disabled={amending} onClick={amend} sx={{ mt: 2 }}>
+            {amending ? "Amending…" : "Save amendment"}
+          </Button>
+        </Paper>
+      </Stack>
+    </ScreenShell>
   );
 }
