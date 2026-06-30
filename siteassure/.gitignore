@@ -2,6 +2,9 @@ node_modules/
 dist/
 target/
 
+# Tauri-generated schemas/manifests — regenerated each build, don't commit
+src-tauri/gen/
+
 # OSHA pipeline raw pulls
 data/raw/
 
