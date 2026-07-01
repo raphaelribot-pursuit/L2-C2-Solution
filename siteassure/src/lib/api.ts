@@ -1,7 +1,7 @@
 // Thin wrappers over the Tauri commands. Mirrors src-tauri/src/commands.rs (camelCase contract).
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Transcript, RecordWithHistory, MicStatus, FlagHit, NewRecordInput } from "./types";
+import type { Transcript, RecordWithHistory, MicStatus, FlagHit, NewRecordInput, AuditEntry, AuditStatus } from "./types";
 
 // 02 Voice capture (mic via cpal + whisper.cpp, all on-device).
 export const startRecording  = ()                  => invoke<void>("start_recording");
@@ -14,10 +14,17 @@ export const saveRecord   = (rec: NewRecordInput)                          => in
 export const amendRecord  = (id: string, changes: unknown, reason: string) => invoke<number>("amend_record", { id, changes, reason });
 export const getRecord    = (id: string)                                   => invoke<RecordWithHistory>("get_record", { id });
 export const listRecords  = ()                                             => invoke<unknown[]>("list_records");
+// Soft delete — voids the record (kept in the audit chain, hidden from normal views).
+// A reason is required, same as amend, so the "why" is preserved for compliance.
+export const voidRecord   = (id: string, reason: string)                   => invoke<void>("void_record", { id, reason });
 
 // 04 Safety flags (deterministic, offline rules + OSHA context).
 export const scanFlags = (narrative: string, tradeNaics?: string) =>
   invoke<FlagHit[]>("scan_flags", { narrative, tradeNaics });
+
+// Audit tab. Backed by src-tauri/src/audit.rs (verify_db + AuditEntry), registered in commands.rs/main.rs.
+export const auditStatus  = ()                => invoke<AuditStatus>("audit_status");
+export const listAuditLog = (limit?: number)  => invoke<AuditEntry[]>("list_audit_log", { limit });
 
 // First-run setup — on-device dependency install (voice model + ffmpeg) with progress events.
 export interface SetupStatus { modelReady: boolean; ffmpegReady: boolean; modelHint: string; ffmpegHint: string; }

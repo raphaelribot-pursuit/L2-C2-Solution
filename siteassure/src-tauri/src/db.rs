@@ -20,11 +20,39 @@ pub struct Db {
 
 const ACTOR: &str = "local"; // single user in v1
 
-/// Open (or create) the store and apply the schema.
+/// Open (or create) the store, apply the schema, then run idempotent migrations that add
+/// columns the shipped schema.sql doesn't yet have (avoids needing a hand-authored migration
+/// framework for a single-user, single-file SQLite store).
 pub fn open(path: &Path) -> Result<Connection, String> {
     let conn = Connection::open(path).map_err(|e| e.to_string())?;
     conn.execute_batch(SCHEMA).map_err(|e| e.to_string())?;
+    migrate(&conn)?;
     Ok(conn)
+}
+
+/// Adds the `voided*` columns to `records` if they're not already there. Safe to run on every
+/// startup — checks PRAGMA table_info first rather than relying on `ADD COLUMN IF NOT EXISTS`,
+/// which needs a newer SQLite than we want to assume is bundled everywhere.
+fn migrate(conn: &Connection) -> Result<(), String> {
+    let mut stmt = conn
+        .prepare("PRAGMA table_info(records)")
+        .map_err(|e| e.to_string())?;
+    let cols: Vec<String> = stmt
+        .query_map([], |r| r.get::<_, String>(1))
+        .map_err(|e| e.to_string())?
+        .collect::<rusqlite::Result<Vec<String>>>()
+        .map_err(|e| e.to_string())?;
+
+    if !cols.iter().any(|c| c == "voided") {
+        conn.execute_batch(
+            "ALTER TABLE records ADD COLUMN voided INTEGER NOT NULL DEFAULT 0;
+             ALTER TABLE records ADD COLUMN voided_at TEXT;
+             ALTER TABLE records ADD COLUMN voided_by TEXT;
+             ALTER TABLE records ADD COLUMN voided_reason TEXT;",
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 fn enc(key: &[u8; 32], s: &str) -> Result<String, String> {
@@ -91,11 +119,12 @@ pub fn save_record(conn: &Connection, key: &[u8; 32], rec: &NewRecord, now: &str
     Ok(id)
 }
 
-/// 01 Records list (newest first). Reads only non-secret columns (id/kind/time/site/trade).
+/// 01 Records list (newest first). Reads only non-secret columns (id/kind/time/site/trade),
+/// plus `voided` so callers can filter deleted records out of normal views.
 pub fn list_records(conn: &Connection) -> Result<Vec<Value>, String> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, kind, created_at, current_ver, site, trade_naics
+            "SELECT id, kind, created_at, current_ver, site, trade_naics, voided
              FROM records ORDER BY created_at DESC",
         )
         .map_err(|e| e.to_string())?;
@@ -108,6 +137,7 @@ pub fn list_records(conn: &Connection) -> Result<Vec<Value>, String> {
                 "currentVersion": r.get::<_, i64>(3)?,
                 "site": r.get::<_, Option<String>>(4)?,
                 "tradeNaics": r.get::<_, Option<String>>(5)?,
+                "voided": r.get::<_, i64>(6)? != 0,
             }))
         })
         .map_err(|e| e.to_string())?
@@ -116,8 +146,28 @@ pub fn list_records(conn: &Connection) -> Result<Vec<Value>, String> {
     Ok(rows)
 }
 
-/// 05 Record + decrypted version history + audit-verify result.
+/// 05 Record + decrypted version history + audit-verify result. Also returns the top-level
+/// record metadata (kind/createdAt/createdBy/currentVersion/voided*) from the `records` row —
+/// previously this only returned id/versions/auditVerified, which left the frontend guessing
+/// `kind` out of versions[0] as a workaround.
 pub fn get_record(conn: &Connection, key: &[u8; 32], id: &str) -> Result<RecordWithHistory, String> {
+    type HeadRow = (String, String, String, i64, i64, Option<String>, Option<String>, Option<String>);
+    let (kind, created_at_head, created_by, current_ver, voided, voided_at, voided_by, voided_reason): HeadRow = conn
+        .query_row(
+            "SELECT kind, created_at, created_by, current_ver, voided, voided_at, voided_by, voided_reason
+             FROM records WHERE id = ?1",
+            params![id],
+            |r| {
+                Ok((
+                    r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?,
+                    r.get(4)?, r.get(5)?, r.get(6)?, r.get(7)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("record not found: {id}"))?;
+
     let mut stmt = conn
         .prepare(
             "SELECT version, created_at, author, reason, transcript, narrative, fields_json, flags_json, status
@@ -158,9 +208,46 @@ pub fn get_record(conn: &Connection, key: &[u8; 32], id: &str) -> Result<RecordW
     let audit_verified = audit::verify_db(conn)?;
     Ok(RecordWithHistory {
         id: id.to_string(),
+        kind,
+        created_at: created_at_head,
+        created_by,
+        current_version: current_ver,
         versions,
         audit_verified,
+        voided: voided != 0,
+        voided_at,
+        voided_by,
+        voided_reason,
     })
+}
+
+/// Soft-delete: marks a record voided (never removes rows, versions, or audit entries — the
+/// record stays fully readable via get_record). A reason is required, and the deletion itself
+/// is appended to the SAME hash chain as create/amend, so it's just as tamper-evident.
+pub fn void_record(conn: &Connection, id: &str, reason: &str, now: &str) -> Result<(), String> {
+    if reason.trim().is_empty() {
+        return Err("a reason is required to delete a record".into());
+    }
+
+    let already_voided: i64 = conn
+        .query_row("SELECT voided FROM records WHERE id = ?1", params![id], |r| r.get(0))
+        .optional()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("record not found: {id}"))?;
+    if already_voided != 0 {
+        return Err("record is already deleted".into());
+    }
+
+    conn.execute(
+        "UPDATE records SET voided = 1, voided_at = ?1, voided_by = ?2, voided_reason = ?3 WHERE id = ?4",
+        params![now, ACTOR, reason, id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    let payload = json!({ "record_id": id, "reason": reason }).to_string();
+    audit::append(conn, now, ACTOR, Some("author"), "void", Some(id), None, payload.as_bytes())?;
+
+    Ok(())
 }
 
 /// 05 Amend: write a NEW version (prior preserved, raw transcript immutable), bump current_ver,
@@ -244,6 +331,51 @@ pub fn amend_record(
     audit::append(conn, now, ACTOR, Some("author"), "amend", Some(id), Some(new_ver), payload.as_bytes())?;
 
     Ok(new_ver)
+}
+
+/// Audit tab: recent chain entries, newest first, capped at `limit`. Read-only — audit_log
+/// itself is only ever written by audit::append (see audit.rs doc comment).
+pub fn list_audit_log(conn: &Connection, limit: i64) -> Result<Vec<audit::AuditEntry>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT seq, ts, actor, action, record_id, version, payload_hash, prev_hash, entry_hash
+             FROM audit_log ORDER BY seq DESC LIMIT ?1",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![limit], |r| {
+            Ok(audit::AuditEntry {
+                seq: r.get(0)?,
+                ts: r.get(1)?,
+                actor: r.get(2)?,
+                action: r.get(3)?,
+                record_id: r.get(4)?,
+                version: r.get(5)?,
+                payload_hash: r.get(6)?,
+                prev_hash: r.get(7)?,
+                entry_hash: r.get(8)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(|e| e.to_string())?;
+    Ok(rows)
+}
+
+/// Audit tab: re-verifies the whole chain (audit::verify_db) and reports the head anchor
+/// (count/last_hash/updated_at) so the UI can show "verified" plus a summary readout.
+pub fn audit_status(conn: &Connection) -> Result<crate::commands::AuditStatus, String> {
+    let verified = audit::verify_db(conn)?;
+    let (count, last_hash, updated_at): (i64, String, String) = conn
+        .query_row(
+            "SELECT count, last_hash, updated_at FROM audit_head WHERE id = 1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?
+        .unwrap_or((0, String::new(), String::new()));
+    Ok(crate::commands::AuditStatus { verified, count, last_hash, updated_at })
 }
 
 #[cfg(test)]
@@ -336,5 +468,52 @@ mod tests {
         assert!(audit::verify_db(&c).unwrap());
 
         std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn void_record_soft_deletes_and_preserves_audit_chain() {
+        let c = mem();
+        let id = save_record(&c, &KEY, &sample(), "2026-01-01T00:00:00Z").unwrap();
+        void_record(&c, &id, "duplicate entry", "2026-01-02T00:00:00Z").unwrap();
+
+        // Nothing was removed — the record and its versions are still fully readable.
+        let rwh = get_record(&c, &KEY, &id).unwrap();
+        assert!(rwh.voided);
+        assert_eq!(rwh.voided_reason.as_deref(), Some("duplicate entry"));
+        assert_eq!(rwh.versions.len(), 1);
+        assert!(audit::verify_db(&c).unwrap());
+
+        // The 'void' action landed in the same hash chain as 'create'.
+        let voided_actions: i64 = c
+            .query_row("SELECT COUNT(*) FROM audit_log WHERE action = 'void' AND record_id = ?1", params![id], |r| r.get(0))
+            .unwrap();
+        assert_eq!(voided_actions, 1);
+    }
+
+    #[test]
+    fn void_record_requires_a_reason() {
+        let c = mem();
+        let id = save_record(&c, &KEY, &sample(), "t").unwrap();
+        assert!(void_record(&c, &id, "   ", "t").is_err());
+    }
+
+    #[test]
+    fn void_record_cannot_be_applied_twice() {
+        let c = mem();
+        let id = save_record(&c, &KEY, &sample(), "t").unwrap();
+        void_record(&c, &id, "test", "t").unwrap();
+        assert!(void_record(&c, &id, "test again", "t2").is_err());
+    }
+
+    #[test]
+    fn list_records_reports_voided_flag() {
+        let c = mem();
+        let id = save_record(&c, &KEY, &sample(), "t").unwrap();
+        let before = list_records(&c).unwrap();
+        assert_eq!(before[0]["voided"], false);
+
+        void_record(&c, &id, "test", "t2").unwrap();
+        let after = list_records(&c).unwrap();
+        assert_eq!(after[0]["voided"], true);
     }
 }
