@@ -41,8 +41,11 @@ fn main() {
             commands::save_record,
             commands::amend_record,
             commands::get_record,
+            commands::void_record,
             commands::list_records,
             commands::scan_flags,
+            commands::audit_status,
+            commands::list_audit_log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running SiteAssure");

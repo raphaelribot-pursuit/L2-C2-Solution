@@ -1,9 +1,91 @@
 <!doctype html>
 <html lang="en">
   <head>
+    
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
     <title>SiteAssure</title>
+    <!--
+  SiteAssure — Google Fonts
+  Add these lines inside <head> in siteassure/index.html.
+
+  Three families:
+    Roboto Slab  — h1–h6 (headers, the "ledger serif" of the PRD)
+    Inter        — body, UI, overlines, buttons
+    IBM Plex Mono — timestamps, "no signal" readout, record counts, raw-transcript labels
+
+  Weight subsets are intentional:
+    Roboto Slab  600 + 700   (SemiBold + Bold — only two weights used in theme.ts)
+    Inter        400 + 600   (Regular + SemiBold — body + button/overline weight)
+    IBM Plex Mono 400        (Mono is always regular weight in this UI)
+
+  The ?display=swap avoids a FOIT (flash of invisible text) on first load.
+  The two preconnects cut DNS + TLS handshake time for fonts.googleapis.com
+  and fonts.gstatic.com — keep both, they hit different servers.
+
+  NOTE: this is the only network call SiteAssure makes outside the core loop.
+  Fonts load once and are cached by the browser/WebView. The app still works
+  offline after the first load because Tauri bundles the WebView locally —
+  the fonts just fall back to the system stack (serif / sans-serif / monospace)
+  until they've been fetched once.
+-->
+
+<!-- 1 of 3: preconnect to shave ~100–300 ms off the first font request -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+<!-- 2 of 3: single combined request for all three families -->
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=Inter:wght@400;600&family=Roboto+Slab:wght@600;700&display=swap"
+/>
+
+<!--
+  3 of 3: fallback @font-face block (optional — paste into src/index.css or
+  a global CSS file if you want zero-network offline fallback using locally
+  bundled font files dropped into siteassure/src/assets/fonts/).
+
+  If you go the local-files route:
+    1. Download each .woff2 from fonts.google.com → Download family.
+    2. Place them in siteassure/src/assets/fonts/.
+    3. Replace the <link> above with these @font-face rules:
+
+  @font-face {
+    font-family: 'Roboto Slab';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('/src/assets/fonts/RobotoSlab-SemiBold.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'Roboto Slab';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('/src/assets/fonts/RobotoSlab-Bold.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/src/assets/fonts/Inter-Regular.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('/src/assets/fonts/Inter-SemiBold.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/src/assets/fonts/IBMPlexMono-Regular.woff2') format('woff2');
+  }
+-->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Slab:wght@500;600;700&display=swap" rel="stylesheet" />
   </head>

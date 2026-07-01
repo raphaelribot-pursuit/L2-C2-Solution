@@ -41,3 +41,8 @@ wisper/.tauri/
 
 # Local architecture diagram (generated HTML, open in browser)
 docs/WISPER_ARCHITECTURE_FLOW.html
+siteassure/src-tauri.zip
+.gitignore
+siteassure/Archive.zip
+siteassure/db.zip
+siteassure/src.zip

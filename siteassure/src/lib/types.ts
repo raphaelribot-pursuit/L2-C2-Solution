@@ -44,6 +44,30 @@ export interface RecordVersion {
 export interface RecordWithHistory {
   id: string; kind: RecordKind; createdAt: string; createdBy: string;
   currentVersion: number; versions: RecordVersion[]; auditVerified: boolean;
+  // Soft-delete: voided records stay in the audit chain (nothing is ever hard-deleted)
+  // but are excluded from Home/Dashboard views. Set by void_record.
+  voided?: boolean; voidedAt?: string; voidedBy?: string; voidedReason?: string;
+}
+
+// Audit chain (src-tauri/src/audit.rs AuditEntry / audit::verify_db). Backs the new Audit tab.
+// NOTE: audit_status / list_audit_log Tauri commands do not exist yet — see api.ts comment.
+export interface AuditEntry {
+  seq: number;
+  ts: string;
+  actor: string;
+  action: string; // 'create' | 'amend' | 'void' | 'flag_accept' | 'flag_dismiss' | 'capture' | 'export'
+  recordId?: string;
+  version?: number;
+  payloadHash: string;
+  prevHash: string;
+  entryHash: string;
+}
+
+export interface AuditStatus {
+  verified: boolean;
+  count: number;
+  lastHash: string;
+  updatedAt: string;
 }
 
 // In-flight capture draft shared across the capture → confirm → flags screens (src/App.tsx).
