@@ -5,13 +5,20 @@ PRAGMA foreign_keys = ON;
 
 -- One row per logical record (a daily log / JHA / inspection / incident).
 CREATE TABLE IF NOT EXISTS records (
-  id           TEXT PRIMARY KEY,        -- uuid
-  kind         TEXT NOT NULL,           -- 'daily_log' | 'jha' | 'inspection' | 'incident'
-  created_at   TEXT NOT NULL,           -- ISO-8601
-  created_by   TEXT NOT NULL,           -- author id (single user in v1)
-  current_ver  INTEGER NOT NULL DEFAULT 1,
-  site         TEXT,
-  trade_naics  TEXT                     -- e.g. '238160' -> drives OSHA flag context
+  id             TEXT PRIMARY KEY,        -- uuid
+  kind           TEXT NOT NULL,           -- 'daily_log' | 'jha' | 'inspection' | 'incident'
+  created_at     TEXT NOT NULL,           -- ISO-8601
+  created_by     TEXT NOT NULL,           -- author id (single user in v1)
+  current_ver    INTEGER NOT NULL DEFAULT 1,
+  site           TEXT,
+  trade_naics    TEXT,                    -- e.g. '238160' -> drives OSHA flag context
+  -- Soft delete: erroneous records are voided, never hard-deleted. The row and every
+  -- record_versions/audit_log entry stay put — this just hides it from normal views
+  -- (list_records). db::void_record is the only writer of these four columns.
+  voided         INTEGER NOT NULL DEFAULT 0,
+  voided_at      TEXT,
+  voided_by      TEXT,
+  voided_reason  TEXT
 );
 
 -- Immutable snapshot of a record's content at each version. Never updated in place.
@@ -37,7 +44,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
   seq          INTEGER PRIMARY KEY AUTOINCREMENT,
   ts           TEXT NOT NULL,
   actor        TEXT NOT NULL,
-  action       TEXT NOT NULL,            -- 'create' | 'amend' | 'flag_accept' | 'flag_dismiss' | 'capture' | 'export'
+  action       TEXT NOT NULL,            -- 'create' | 'amend' | 'void' | 'flag_accept' | 'flag_dismiss' | 'capture' | 'export'
   role         TEXT,                     -- v2 hook: actor role 'author' | 'reviewer' | 'auditor' (single-user v1 = NULL / 'author')
   record_id    TEXT,
   version      INTEGER,

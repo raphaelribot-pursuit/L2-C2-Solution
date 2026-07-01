@@ -39,8 +39,27 @@ pub struct NewRecord {
 #[serde(rename_all = "camelCase")]
 pub struct RecordWithHistory {
     pub id: String,
+    pub kind: String,
+    pub created_at: String,
+    pub created_by: String,
+    pub current_version: i64,
     pub versions: Vec<serde_json::Value>,
     pub audit_verified: bool,
+    // Soft-delete: voided records stay in the audit chain but are hidden from Home/Dashboard.
+    pub voided: bool,
+    pub voided_at: Option<String>,
+    pub voided_by: Option<String>,
+    pub voided_reason: Option<String>,
+}
+
+/// Audit tab: chain-verified flag + head anchor summary (src-tauri/src/audit.rs audit_head).
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AuditStatus {
+    pub verified: bool,
+    pub count: i64,
+    pub last_hash: String,
+    pub updated_at: String,
 }
 
 /// Models live under the app data dir (staged per machine — see README; gitignored).
@@ -165,6 +184,16 @@ pub fn get_record(db: tauri::State<'_, crate::db::Db>, id: String) -> Result<Rec
     crate::db::get_record(&conn, &db.key, &id)
 }
 
+/// 05 Delete (soft): void a record. Nothing is ever hard-deleted — the record and its full
+/// version history stay in the database and the audit chain; list_records/get_record just
+/// flag it as `voided` so the frontend can hide it from Home/Dashboard. Reason required.
+#[tauri::command]
+pub fn void_record(db: tauri::State<'_, crate::db::Db>, id: String, reason: String) -> Result<(), String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let now = chrono::Utc::now().to_rfc3339();
+    crate::db::void_record(&conn, &id, &reason, &now)
+}
+
 /// 01 Home / Records list.
 #[tauri::command]
 pub fn list_records(db: tauri::State<'_, crate::db::Db>) -> Result<Vec<serde_json::Value>, String> {
@@ -176,4 +205,21 @@ pub fn list_records(db: tauri::State<'_, crate::db::Db>) -> Result<Vec<serde_jso
 #[tauri::command]
 pub fn scan_flags(narrative: String, trade_naics: Option<String>) -> Vec<crate::flags::Flag> {
     crate::flags::scan(&narrative, trade_naics.as_deref())
+}
+
+/// Audit tab: chain-verified status + head anchor summary (count/lastHash/updatedAt).
+#[tauri::command]
+pub fn audit_status(db: tauri::State<'_, crate::db::Db>) -> Result<AuditStatus, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    crate::db::audit_status(&conn)
+}
+
+/// Audit tab: recent chain entries, newest first. `limit` defaults to 50 if not supplied.
+#[tauri::command]
+pub fn list_audit_log(
+    db: tauri::State<'_, crate::db::Db>,
+    limit: Option<i64>,
+) -> Result<Vec<crate::audit::AuditEntry>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    crate::db::list_audit_log(&conn, limit.unwrap_or(50))
 }
