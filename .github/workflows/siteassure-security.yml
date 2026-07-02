@@ -26,9 +26,13 @@ jobs:
         run: cargo install cargo-audit --locked || (sleep 8 && cargo install cargo-audit --locked)
       - name: cargo audit
         working-directory: siteassure
+        # RUSTSEC-2026-0194 (quick-xml quadratic-time DoS): quick-xml is a BUILD dependency of
+        # Tauri (tauri-build → tauri-utils → plist → quick-xml) that parses our own bundle config,
+        # not attacker-controlled runtime input. The fix (quick-xml >=0.41) is gated behind a
+        # plist/Tauri bump we won't take pre-1.0. Ignored with justification; revisit when Tauri updates.
         run: |
           cargo generate-lockfile
-          cargo audit
+          cargo audit --ignore RUSTSEC-2026-0194
 
   deps-npm:
     runs-on: ubuntu-latest
