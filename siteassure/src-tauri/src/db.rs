@@ -333,6 +333,78 @@ pub fn amend_record(
     Ok(new_ver)
 }
 
+/// Resolve one flag with proof: writes a NEW version with that flag's status set to "resolved"
+/// plus the note + timestamp (all other content carried forward — the stored ciphertext is copied
+/// verbatim, so no key/re-encryption is needed and the raw transcript stays immutable), then
+/// appends a 'flag_resolve' entry to the SAME hash chain. The prior version — flag still open —
+/// stays immutable, so the remediation is provable. A note is required.
+pub fn resolve_flag(conn: &Connection, id: &str, flag_code: &str, note: &str, now: &str) -> Result<i64, String> {
+    if note.trim().is_empty() {
+        return Err("a note is required to resolve a flag".into());
+    }
+
+    let (cur_ver, enc_transcript, enc_narrative, enc_fields, flags_json): (
+        i64,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+    ) = conn
+        .query_row(
+            "SELECT version, transcript, narrative, fields_json, flags_json
+             FROM record_versions WHERE record_id = ?1 ORDER BY version DESC LIMIT 1",
+            params![id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("record not found: {id}"))?;
+
+    // flags_json is stored PLAIN (safety codes, not PII). Mark the matching flag resolved.
+    let mut flags: Value =
+        serde_json::from_str(flags_json.as_deref().unwrap_or("[]")).map_err(|e| e.to_string())?;
+    let mut found = false;
+    if let Some(arr) = flags.as_array_mut() {
+        for f in arr.iter_mut() {
+            if f.get("code").and_then(|c| c.as_str()) == Some(flag_code) {
+                f["status"] = json!("resolved");
+                f["resolutionNote"] = json!(note);
+                f["resolvedAt"] = json!(now);
+                found = true;
+            }
+        }
+    }
+    if !found {
+        return Err(format!("flag not found on this record: {flag_code}"));
+    }
+    let new_ver = cur_ver + 1;
+
+    // Content carried forward unchanged: copy the existing ciphertext verbatim (decrypts to the
+    // same plaintext), only flags_json changes. No decrypt/re-encrypt, so no key needed here.
+    conn.execute(
+        "INSERT INTO record_versions
+           (record_id, version, created_at, author, reason, transcript, narrative, fields_json, flags_json, status)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'final')",
+        params![
+            id, new_ver, now, ACTOR,
+            format!("Resolved flag {flag_code}"),
+            enc_transcript, enc_narrative, enc_fields, flags.to_string()
+        ],
+    )
+    .map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "UPDATE records SET current_ver = ?1 WHERE id = ?2",
+        params![new_ver, id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    let payload = json!({ "record_id": id, "version": new_ver, "flag_code": flag_code, "note": note }).to_string();
+    audit::append(conn, now, ACTOR, Some("author"), "flag_resolve", Some(id), Some(new_ver), payload.as_bytes())?;
+
+    Ok(new_ver)
+}
+
 /// Audit tab: recent chain entries, newest first, capped at `limit`. Read-only — audit_log
 /// itself is only ever written by audit::append (see audit.rs doc comment).
 pub fn list_audit_log(conn: &Connection, limit: i64) -> Result<Vec<audit::AuditEntry>, String> {
@@ -515,5 +587,41 @@ mod tests {
         void_record(&c, &id, "test", "t2").unwrap();
         let after = list_records(&c).unwrap();
         assert_eq!(after[0]["voided"], true);
+    }
+
+    #[test]
+    fn resolve_flag_marks_resolved_and_chains_proof() {
+        let c = mem();
+        let mut rec = sample();
+        rec.flags_json = r#"[{"code":"FALL","title":"Fall protection","rationale":"x","status":"open"}]"#.into();
+        let id = save_record(&c, &KEY, &rec, "2026-01-01T00:00:00Z").unwrap();
+
+        let v2 = resolve_flag(&c, &id, "FALL", "Harness verified, photo on file", "2026-01-02T00:00:00Z").unwrap();
+        assert_eq!(v2, 2);
+
+        // Latest version has the flag resolved with the note; the prior version stays open (proof).
+        let rwh = get_record(&c, &KEY, &id).unwrap();
+        let latest: Value = serde_json::from_str(rwh.versions[1]["flagsJson"].as_str().unwrap()).unwrap();
+        assert_eq!(latest[0]["status"], "resolved");
+        assert_eq!(latest[0]["resolutionNote"], "Harness verified, photo on file");
+        let prior: Value = serde_json::from_str(rwh.versions[0]["flagsJson"].as_str().unwrap()).unwrap();
+        assert_eq!(prior[0]["status"], "open");
+
+        // 'flag_resolve' landed in the same chain and it still verifies.
+        let resolves: i64 = c
+            .query_row("SELECT COUNT(*) FROM audit_log WHERE action = 'flag_resolve' AND record_id = ?1", params![id], |r| r.get(0))
+            .unwrap();
+        assert_eq!(resolves, 1);
+        assert!(audit::verify_db(&c).unwrap());
+    }
+
+    #[test]
+    fn resolve_flag_requires_a_note_and_valid_code() {
+        let c = mem();
+        let mut rec = sample();
+        rec.flags_json = r#"[{"code":"FALL","title":"Fall protection","rationale":"x","status":"open"}]"#.into();
+        let id = save_record(&c, &KEY, &rec, "t").unwrap();
+        assert!(resolve_flag(&c, &id, "FALL", "   ", "t").is_err()); // empty note
+        assert!(resolve_flag(&c, &id, "NOPE", "note", "t").is_err()); // no such flag
     }
 }

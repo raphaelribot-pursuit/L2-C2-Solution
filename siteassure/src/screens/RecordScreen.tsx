@@ -11,12 +11,13 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import FiberManualRecordRoundedIcon from "@mui/icons-material/FiberManualRecordRounded";
 import ScreenShell, { type NavTab } from "../components/ScreenShell";
-import { getRecord, amendRecord, voidRecord } from "../lib/api";
+import { getRecord, amendRecord, voidRecord, resolveFlag, startRecording, stopRecording, transcribe } from "../lib/api";
 import { diffText } from "../lib/diff";
-import type { RecordWithHistory } from "../lib/types";
+import type { RecordWithHistory, SafetyFlag } from "../lib/types";
 
 // Inline so this file works with either the old or new theme.ts
 const MONO = "'IBM Plex Mono', 'Roboto Mono', ui-monospace, monospace";
+const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in (window as unknown as Record<string, unknown>);
 
 export default function RecordScreen({ id, onHome, onNav }: { id: string; onHome: () => void; onNav: (tab: NavTab) => void }) {
   const [rec, setRec]         = useState<RecordWithHistory | undefined>(undefined);
@@ -32,6 +33,13 @@ export default function RecordScreen({ id, onHome, onNav }: { id: string; onHome
   const [voidReason, setVoidReason]         = useState("");
   const [voiding, setVoiding]               = useState(false);
   const [voidErr, setVoidErr]               = useState<string | undefined>(undefined);
+
+  // Resolve-with-proof flow — pick a flag, add a note (typed or voice), append it to the chain.
+  const [resolveTarget, setResolveTarget] = useState<SafetyFlag | null>(null);
+  const [resolveNote, setResolveNote]     = useState("");
+  const [resolving, setResolving]         = useState(false);
+  const [resolveErr, setResolveErr]       = useState<string | undefined>(undefined);
+  const [recordingNote, setRecordingNote] = useState(false);
 
   const load = () => {
     if (!id) return;
@@ -86,6 +94,49 @@ export default function RecordScreen({ id, onHome, onNav }: { id: string; onHome
       setVoidErr(String(e));
     } finally {
       setVoiding(false);
+    }
+  };
+
+  // Flags on the current version (stored as a plain JSON string in flagsJson).
+  const flags: SafetyFlag[] = useMemo(() => {
+    const raw = (current as unknown as { flagsJson?: string })?.flagsJson;
+    if (!raw) return [];
+    try { return JSON.parse(raw) as SafetyFlag[]; } catch { return []; }
+  }, [current]);
+
+  const doResolve = async () => {
+    if (!resolveTarget) return;
+    if (!resolveNote.trim()) { setResolveErr("A note is required to resolve a flag."); return; }
+    setResolving(true);
+    setResolveErr(undefined);
+    try {
+      await resolveFlag(id, resolveTarget.code, resolveNote);
+      setResolveTarget(null);
+      setResolveNote("");
+      load(); // re-fetch so the resolved flag + new version show immediately
+    } catch (e) {
+      setResolveErr(String(e));
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  // Optional: dictate the resolution note. Reuses the same mic + on-device transcribe pipeline.
+  const toggleVoiceNote = async () => {
+    setResolveErr(undefined);
+    try {
+      if (!recordingNote) {
+        await startRecording();
+        setRecordingNote(true);
+      } else {
+        const wav = await stopRecording();
+        setRecordingNote(false);
+        const t = await transcribe(wav);
+        setResolveNote((n) => (n ? `${n} ${t.text}` : t.text));
+      }
+    } catch (e) {
+      setRecordingNote(false);
+      setResolveErr(String(e));
     }
   };
 
@@ -238,6 +289,59 @@ export default function RecordScreen({ id, onHome, onNav }: { id: string; onHome
             ))}
           </Stack>
         </Paper>
+
+        {/* ── Safety flags + resolve-with-proof ── */}
+        {flags.length > 0 && (
+        <Paper variant="outlined" sx={{ p: { xs: 2, md: 2.5 }, borderRadius: 3, borderColor: "divider" }}>
+          <Typography variant="overline" color="text.secondary">Safety flags</Typography>
+          <Stack spacing={1.5} sx={{ mt: 1 }}>
+            {flags.map((f) => {
+              const resolved = f.status === "resolved";
+              return (
+                <Paper key={f.code} variant="outlined" sx={{ p: 1.5, borderRadius: 2, borderColor: "divider" }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                    <Box sx={{ flex: 1 }}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="subtitle2">{f.title}</Typography>
+                        <Chip
+                          size="small"
+                          label={f.status}
+                          sx={{
+                            fontWeight: 700, textTransform: "capitalize",
+                            bgcolor: resolved ? "rgba(45,170,90,0.18)" : "rgba(244,164,30,0.18)",
+                            color: resolved ? "success.main" : "secondary.main",
+                          }}
+                        />
+                      </Stack>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{f.rationale}</Typography>
+                      {f.oshaContext && (
+                        <Typography variant="caption" sx={{ fontFamily: MONO, color: "text.secondary", display: "block", mt: 0.5 }}>
+                          {f.oshaContext}
+                        </Typography>
+                      )}
+                      {resolved && f.resolutionNote && (
+                        <Typography variant="body2" sx={{ mt: 1, color: "success.main" }}>
+                          ✓ {f.resolutionNote}{f.resolvedAt ? ` · ${new Date(f.resolvedAt).toLocaleString()}` : ""}
+                        </Typography>
+                      )}
+                    </Box>
+                    {!rec.voided && !resolved && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="secondary"
+                        onClick={() => { setResolveTarget(f); setResolveNote(""); setResolveErr(undefined); }}
+                      >
+                        Resolve
+                      </Button>
+                    )}
+                  </Stack>
+                </Paper>
+              );
+            })}
+          </Stack>
+        </Paper>
+        )}
 
         {/* ── Voided notice (record is soft-deleted) ── */}
         {rec.voided && (
@@ -396,6 +500,42 @@ export default function RecordScreen({ id, onHome, onNav }: { id: string; onHome
             </Button>
             <Button variant="contained" color="error" onClick={handleVoid} disabled={voiding}>
               {voiding ? "Deleting…" : "Delete record"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* ── Resolve-with-proof dialog ── */}
+        <Dialog open={!!resolveTarget} onClose={() => (!resolving && setResolveTarget(null))} maxWidth="sm" fullWidth>
+          <DialogTitle>Resolve: {resolveTarget?.title}</DialogTitle>
+          <DialogContent>
+            <DialogContentText sx={{ mb: 2 }}>
+              Record how this hazard was addressed. Your note and a timestamp are appended to the
+              audit chain as a new version — the original open flag stays on record, so the
+              remediation is provable.
+            </DialogContentText>
+            <TextField
+              label="Resolution note (required)"
+              fullWidth
+              autoFocus
+              multiline
+              minRows={2}
+              value={resolveNote}
+              onChange={(e) => setResolveNote(e.target.value)}
+              placeholder="e.g. Installed guardrail on the north edge; harness inspected."
+            />
+            {inTauri && (
+              <Button size="small" onClick={toggleVoiceNote} color={recordingNote ? "error" : "primary"} sx={{ mt: 1 }}>
+                {recordingNote ? "Stop & transcribe" : "🎤 Record voice note"}
+              </Button>
+            )}
+            {resolveErr && (
+              <Typography color="error" variant="body2" sx={{ mt: 1 }}>{resolveErr}</Typography>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button onClick={() => setResolveTarget(null)} disabled={resolving}>Cancel</Button>
+            <Button variant="contained" color="secondary" onClick={doResolve} disabled={resolving || recordingNote}>
+              {resolving ? "Resolving…" : "Resolve with proof"}
             </Button>
           </DialogActions>
         </Dialog>
