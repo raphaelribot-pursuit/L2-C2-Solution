@@ -137,7 +137,8 @@ pub fn verify_db(conn: &Connection) -> Result<bool, String> {
     Ok(true)
 }
 
-/// Pure-data verify (used by the unit test and any in-memory check).
+/// Pure-data verify over an in-memory slice — test-only (production uses `verify_db`).
+#[cfg(test)]
 pub fn verify(entries: &[AuditEntry]) -> bool {
     let mut prev = String::new();
     for e in entries {

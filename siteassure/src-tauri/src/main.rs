@@ -1,6 +1,4 @@
 //! SiteAssure — Tauri + Rust shell (transcription pipeline vendored from wisper). Single-device, offline v1.
-// ponytail: audit/db/flags are scaffolded ahead of use — wired in Phase 2/4. Drop this allow then.
-#![allow(dead_code)]
 use std::sync::Mutex;
 use tauri::Manager;
 
