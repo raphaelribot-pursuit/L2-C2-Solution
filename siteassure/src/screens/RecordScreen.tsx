@@ -189,11 +189,14 @@ export default function RecordScreen({ id, onHome, onNav }: { id: string; onHome
     (rec.versions[0] as any)?.kind ??
     (rec.versions[0] as any)?.fields?.kind ??
     'record';
+  // Human label for the record kind — capitalized, "JHA" kept upper (was rendering "daily log").
+  const KIND_LABEL: Record<string, string> = { daily_log: "Daily log", jha: "JHA", inspection: "Inspection", incident: "Incident" };
+  const kindLabel = KIND_LABEL[kind] ?? kind.replace(/_/g, " ");
   const amended = (rec.versions?.length ?? 0) > 1;
 
   return (
     <ScreenShell
-      title={kind.replace(/_/g, " ")}
+      title={kindLabel}
       subtitle="Evidence trail, version history, and amendment workflow."
       eyebrow="Audit review"
       action={homeBtn}
@@ -207,7 +210,7 @@ export default function RecordScreen({ id, onHome, onNav }: { id: string; onHome
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5}>
             <Box>
               <Stack direction="row" spacing={1} alignItems="center">
-                <Typography variant="h5">{kind.replace(/_/g, " ")}</Typography>
+                <Typography variant="h5">{kindLabel}</Typography>
                 {amended && (
                   <Chip
                     size="small"

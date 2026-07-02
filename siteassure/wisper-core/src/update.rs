@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub const GITHUB_REPO: &str = "aislingld-pursuit/L2-Clone-Prodject";
+pub const GITHUB_REPO: &str = "raphaelribot-pursuit/L2-C2-Solution";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct UpdateCheckResult {
