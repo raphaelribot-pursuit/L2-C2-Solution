@@ -21,6 +21,10 @@ export const voidRecord   = (id: string, reason: string)                   => in
 // chain (a new version); the prior version stays open, so the remediation is provable.
 export const resolveFlag  = (id: string, flagCode: string, note: string)   => invoke<number>("resolve_flag", { id, flagCode, note });
 
+// 06 Dashboard readiness — open (unresolved) flag counts per site, most first.
+export interface SiteOpenFlags { site: string; openFlags: number; records: number; }
+export const openFlagsBySite = () => invoke<SiteOpenFlags[]>("open_flags_by_site");
+
 // 04 Safety flags (deterministic, offline rules + OSHA context).
 export const scanFlags = (narrative: string, tradeNaics?: string) =>
   invoke<FlagHit[]>("scan_flags", { narrative, tradeNaics });

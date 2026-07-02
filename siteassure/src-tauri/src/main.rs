@@ -45,6 +45,7 @@ fn main() {
             commands::void_record,
             commands::resolve_flag,
             commands::list_records,
+            commands::open_flags_by_site,
             commands::scan_flags,
             commands::audit_status,
             commands::list_audit_log,
