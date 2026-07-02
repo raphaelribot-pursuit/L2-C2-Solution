@@ -8,6 +8,7 @@ mod crypto;
 mod db;
 mod flags;
 mod mic;
+mod retention;
 mod setup;
 
 /// Shared app state: the active mic recorder (None when idle).
@@ -25,7 +26,15 @@ fn main() {
             let data = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data).ok();
             std::fs::create_dir_all(data.join("models")).ok();
-            std::fs::create_dir_all(data.join("audio")).ok();
+            let audio_dir = data.join("audio");
+            std::fs::create_dir_all(&audio_dir).ok();
+            // Data-minimization: purge captured WAVs past the retention window on startup. The
+            // audit-chain hash (audio_sha256) is permanent, so "prove it" survives the purge.
+            retention::purge_old_audio(
+                &audio_dir,
+                std::time::Duration::from_secs(retention::RETENTION_DAYS * 86_400),
+                std::time::SystemTime::now(),
+            );
             // Open SQLite + apply schema; manage the connection for the record/audit commands.
             let conn = db::open(&data.join("siteassure.db")).map_err(std::io::Error::other)?;
             let key = crypto::load_or_create_key().map_err(std::io::Error::other)?;
