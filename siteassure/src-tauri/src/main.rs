@@ -43,6 +43,7 @@ fn main() {
             commands::amend_record,
             commands::get_record,
             commands::void_record,
+            commands::resolve_flag,
             commands::list_records,
             commands::scan_flags,
             commands::audit_status,

@@ -27,9 +27,11 @@ export interface SafetyFlag {
   code: string;
   title: string;
   rationale: string;
-  oshaContext?: string;                 // e.g. "Roofing · 57.8% cited for this"
-  status: "open" | "accepted" | "dismissed";
+  oshaContext?: string;                 // e.g. "Roofing · 57.6% cited · ~$11,700 avg penalty when cited"
+  status: "open" | "accepted" | "dismissed" | "resolved";
   note?: string;
+  resolutionNote?: string;              // set by resolve_flag — the proof-of-remediation note
+  resolvedAt?: string;                  // ISO-8601, set by resolve_flag
 }
 
 export interface RecordFields {

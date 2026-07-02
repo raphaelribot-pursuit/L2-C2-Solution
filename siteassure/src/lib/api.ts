@@ -17,6 +17,9 @@ export const listRecords  = ()                                             => in
 // Soft delete — voids the record (kept in the audit chain, hidden from normal views).
 // A reason is required, same as amend, so the "why" is preserved for compliance.
 export const voidRecord   = (id: string, reason: string)                   => invoke<void>("void_record", { id, reason });
+// Resolve a flag with proof — marks it resolved with a note + timestamp, appended to the audit
+// chain (a new version); the prior version stays open, so the remediation is provable.
+export const resolveFlag  = (id: string, flagCode: string, note: string)   => invoke<number>("resolve_flag", { id, flagCode, note });
 
 // 04 Safety flags (deterministic, offline rules + OSHA context).
 export const scanFlags = (narrative: string, tradeNaics?: string) =>

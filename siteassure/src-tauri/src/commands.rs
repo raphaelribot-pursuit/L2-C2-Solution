@@ -194,6 +194,20 @@ pub fn void_record(db: tauri::State<'_, crate::db::Db>, id: String, reason: Stri
     crate::db::void_record(&conn, &id, &reason, &now)
 }
 
+/// 04 Resolve a flag with proof: mark one flag resolved with a note + timestamp, appended to the
+/// audit chain (action 'flag_resolve') as a new version. The prior version stays open — provable.
+#[tauri::command]
+pub fn resolve_flag(
+    db: tauri::State<'_, crate::db::Db>,
+    id: String,
+    flag_code: String,
+    note: String,
+) -> Result<i64, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let now = chrono::Utc::now().to_rfc3339();
+    crate::db::resolve_flag(&conn, &id, &flag_code, &note, &now)
+}
+
 /// 01 Home / Records list.
 #[tauri::command]
 pub fn list_records(db: tauri::State<'_, crate::db::Db>) -> Result<Vec<serde_json::Value>, String> {
