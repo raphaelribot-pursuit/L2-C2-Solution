@@ -4,18 +4,29 @@
 import { useEffect, useState } from "react";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
-import { Box, Button, IconButton, InputBase, Paper, Stack, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { Box, Button, IconButton, InputBase, MenuItem, Paper, Select, Stack, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 import ScreenShell, { type NavTab } from "../components/ScreenShell";
 import type { Draft, DraftFields } from "../lib/types";
 import { autoParseFields } from "../lib/transcriptParse";
+import { tradeStats } from "../lib/tradeStats";
 const MONO = "'IBM Plex Mono', 'Roboto Mono', ui-monospace, monospace";
 
+// Date/site/crew stay free text; Trade is a picker (rendered below) so the stored value is a real
+// NAICS code — which is what the OSHA flag context (Phase 8) and the rarity prompt key off. Before
+// this, the field was free text, so typing "Roofing" silently attached no OSHA context.
 const FIELD_ROWS: { key: keyof DraftFields; label: string; placeholder: string }[] = [
   { key: "date", label: "Date", placeholder: "Jun 26, 2026" },
   { key: "site", label: "Site", placeholder: "Hartley Ave — Lot 14" },
   { key: "crew", label: "Crew", placeholder: "Diaz crew (6)" },
-  { key: "tradeNaics", label: "Trade", placeholder: "Roofing" },
 ];
+
+// Known trades from the OSHA spine, alphabetical. value = NAICS, label = name.
+const TRADE_OPTIONS = Object.entries(tradeStats.trades)
+  .filter(([, t]) => t.name)
+  .sort((a, b) => (a[1].name! < b[1].name! ? -1 : 1));
+
+// "Rarely inspected" = flagged small_sample by the pipeline, or a thin inspection count.
+const RARE_INSPECTED = 60;
 
 function FieldRow({ label, value, placeholder, onChange }: { label: string; value: string; placeholder: string; onChange: (v: string) => void }) {
   const [editing, setEditing] = useState(false);
@@ -59,6 +70,11 @@ export default function ConfirmScreen({ draft, setDraft, onNext, onBack, onNav }
   const f = draft.fields;
   const setField = (k: keyof DraftFields, v: string) => setDraft({ ...draft, fields: { ...f, [k]: v } });
 
+  // Trade drives the rarely-inspected prompt: thin OSHA sample → the flag engine has less to go on.
+  const tradeKey = f.tradeNaics && tradeStats.trades[f.tradeNaics] ? f.tradeNaics : "";
+  const selectedTrade = tradeKey ? tradeStats.trades[tradeKey] : undefined;
+  const rareTrade = !!selectedTrade && (selectedTrade.small_sample || selectedTrade.inspections < RARE_INSPECTED);
+
   useEffect(() => {
     const parsed = autoParseFields(`${draft.transcript} ${draft.narrative}`.trim(), draft.fields as any);
     if (JSON.stringify(parsed) !== JSON.stringify(draft.fields)) {
@@ -90,7 +106,41 @@ export default function ConfirmScreen({ draft, setDraft, onNext, onBack, onNav }
               onChange={(v) => setField(row.key, v)}
             />
           ))}
+          {/* Trade — a picker, not free text, so the value is a real NAICS code (drives OSHA context). */}
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ py: 1.4 }}>
+            <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: "0.16em", minWidth: 84 }}>
+              Trade
+            </Typography>
+            <Select
+              variant="standard"
+              disableUnderline
+              displayEmpty
+              value={tradeKey}
+              onChange={(e) => setField("tradeNaics", e.target.value)}
+              renderValue={(v) => (v && tradeStats.trades[v as string]?.name) || "Select trade"}
+              sx={{ flex: 1, ml: 2, fontSize: 16, color: tradeKey ? "text.primary" : "text.secondary" }}
+            >
+              <MenuItem value=""><em>Select trade</em></MenuItem>
+              {TRADE_OPTIONS.map(([naics, t]) => (
+                <MenuItem key={naics} value={naics}>{t.name}</MenuItem>
+              ))}
+            </Select>
+          </Stack>
         </Paper>
+
+        {/* Trade-aware prompt: rarely-inspected trades get less OSHA signal, so nudge a fuller capture. */}
+        {rareTrade && selectedTrade && (
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, borderColor: "secondary.main", bgcolor: "rgba(244,164,30,0.08)" }}>
+            <Typography variant="subtitle2" sx={{ color: "secondary.main", fontWeight: 700 }}>
+              {selectedTrade.name} is rarely inspected in this market
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              Only {selectedTrade.inspections} OSHA inspections here over 24 months — so a citation is
+              rare but expensive, and the flag engine has less to match on. Capture a fuller walkthrough
+              (hazards, the controls in place, who/what/where) so this record stands on its own.
+            </Typography>
+          </Paper>
+        )}
 
         <Paper variant="outlined" sx={{ p: { xs: 2.2, md: 2.6 }, borderRadius: 3, bgcolor: "background.paper", borderColor: "divider" }}>
           <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5}>
