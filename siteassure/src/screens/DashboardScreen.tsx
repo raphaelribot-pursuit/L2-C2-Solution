@@ -2,9 +2,9 @@
 // bars with a dashed area-average line and the active trade highlighted in amber, plus
 // "Your crews / Highest penalty / Most repeats" callouts.
 import { useEffect, useState } from "react";
-import { Box, Card, CardContent, Paper, Stack, Typography, Button } from "@mui/material";
+import { Box, Card, CardContent, Chip, Paper, Stack, Typography, Button } from "@mui/material";
 import ScreenShell, { type NavTab } from "../components/ScreenShell";
-import { listRecords } from "../lib/api";
+import { listRecords, openFlagsBySite, type SiteOpenFlags } from "../lib/api";
 import { tradeStats } from "../lib/tradeStats";
 const MONO = "'IBM Plex Mono', 'Roboto Mono', ui-monospace, monospace";
 
@@ -40,11 +40,17 @@ function Callout({ title, body }: { title: string; body: string }) {
 
 export default function DashboardScreen({ onHome, onNav }: { onHome: () => void; onNav: (tab: NavTab) => void }) {
   const [count, setCount] = useState(0);
+  const [sites, setSites] = useState<SiteOpenFlags[]>([]);
   useEffect(() => {
     listRecords()
       .then((r) => setCount((r as { voided?: boolean }[]).filter((rec) => !rec.voided).length))
       .catch(() => {});
+    openFlagsBySite().then(setSites).catch(() => {});
   }, []);
+
+  // Real readiness numbers, computed from the records on this device (was hardcoded).
+  const totalOpenFlags = sites.reduce((s, x) => s + x.openFlags, 0);
+  const activeSites = sites.filter((s) => s.openFlags > 0).length;
 
   const trades = Object.entries(tradeStats.trades)
     .filter(([, t]) => t.name)
@@ -70,7 +76,7 @@ export default function DashboardScreen({ onHome, onNav }: { onHome: () => void;
     >
       <Stack spacing={3} sx={{ pb: 2 }}>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", lg: "repeat(4, minmax(0, 1fr))" }, gap: 2 }}>
-          <Stat label="Open flags" value="7" hint="across 4 active sites" />
+          <Stat label="Open flags" value={String(totalOpenFlags)} hint={`across ${activeSites} active site${activeSites === 1 ? "" : "s"}`} />
           <Stat label="Records this week" value={String(count || 142)} hint="↑ 18 vs last week" />
           <Stat label="Audit integrity" value="100%" hint="every edit logged" />
           <Stat label="Avg capture time" value="1m 48s" hint="target < 2 min" />
@@ -109,6 +115,42 @@ export default function DashboardScreen({ onHome, onNav }: { onHome: () => void;
             })}
           </Stack>
         </Paper>
+
+        {sites.length > 0 && (
+          <Paper variant="outlined" sx={{ p: { xs: 2.2, md: 2.6 }, borderRadius: 3, bgcolor: "background.paper", borderColor: "divider" }}>
+            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: "0.1em" }}>
+              Open flags by site — unresolved hazards awaiting sign-off (this device)
+            </Typography>
+            <Stack sx={{ mt: 1.5 }}>
+              {sites.map((s) => (
+                <Stack
+                  key={s.site}
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  sx={{ py: 1.25, borderBottom: "1px solid", borderColor: "divider" }}
+                >
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{s.site}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {s.records} record{s.records === 1 ? "" : "s"}
+                    </Typography>
+                  </Box>
+                  <Chip
+                    label={`${s.openFlags} open`}
+                    size="small"
+                    sx={{
+                      fontWeight: 700,
+                      fontFamily: MONO,
+                      bgcolor: s.openFlags > 0 ? "rgba(244,164,30,0.18)" : "rgba(45,170,90,0.18)",
+                      color: s.openFlags > 0 ? "secondary.main" : "success.main",
+                    }}
+                  />
+                </Stack>
+              ))}
+            </Stack>
+          </Paper>
+        )}
 
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0,1fr))" }, gap: 2 }}>
           <Callout

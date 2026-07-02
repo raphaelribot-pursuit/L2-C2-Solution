@@ -405,6 +405,48 @@ pub fn resolve_flag(conn: &Connection, id: &str, flag_code: &str, note: &str, no
     Ok(new_ver)
 }
 
+/// Dashboard readiness: for every non-voided record, read its CURRENT version's flags and count
+/// the ones still open (status not 'resolved'/'dismissed'), grouped by site and sorted by open
+/// count desc. Joins on `rv.version = r.current_ver` so a resolved flag (which lands in a new
+/// version) automatically drops off the count. Read-only.
+pub fn open_flags_by_site(conn: &Connection) -> Result<Vec<Value>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT COALESCE(NULLIF(TRIM(r.site), ''), 'Unassigned site') AS site, rv.flags_json
+             FROM records r
+             JOIN record_versions rv ON rv.record_id = r.id AND rv.version = r.current_ver
+             WHERE r.voided = 0",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?)))
+        .map_err(|e| e.to_string())?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(|e| e.to_string())?;
+
+    use std::collections::BTreeMap;
+    // site -> (open_flags, record_count)
+    let mut agg: BTreeMap<String, (i64, i64)> = BTreeMap::new();
+    for (site, flags_json) in rows {
+        let entry = agg.entry(site).or_insert((0, 0));
+        entry.1 += 1;
+        if let Ok(Value::Array(arr)) = serde_json::from_str::<Value>(flags_json.as_deref().unwrap_or("[]")) {
+            for f in arr {
+                let status = f.get("status").and_then(|s| s.as_str()).unwrap_or("open");
+                if status != "resolved" && status != "dismissed" {
+                    entry.0 += 1;
+                }
+            }
+        }
+    }
+    let mut out: Vec<Value> = agg
+        .into_iter()
+        .map(|(site, (open, records))| json!({ "site": site, "openFlags": open, "records": records }))
+        .collect();
+    out.sort_by(|a, b| b["openFlags"].as_i64().unwrap_or(0).cmp(&a["openFlags"].as_i64().unwrap_or(0)));
+    Ok(out)
+}
+
 /// Audit tab: recent chain entries, newest first, capped at `limit`. Read-only — audit_log
 /// itself is only ever written by audit::append (see audit.rs doc comment).
 pub fn list_audit_log(conn: &Connection, limit: i64) -> Result<Vec<audit::AuditEntry>, String> {
@@ -623,5 +665,28 @@ mod tests {
         let id = save_record(&c, &KEY, &rec, "t").unwrap();
         assert!(resolve_flag(&c, &id, "FALL", "   ", "t").is_err()); // empty note
         assert!(resolve_flag(&c, &id, "NOPE", "note", "t").is_err()); // no such flag
+    }
+
+    #[test]
+    fn open_flags_by_site_counts_unresolved() {
+        let c = mem();
+        let mut r1 = sample();
+        r1.site = Some("Bridge 9".into());
+        r1.flags_json = r#"[{"code":"FALL","status":"open"},{"code":"TRENCH","status":"open"}]"#.into();
+        let id1 = save_record(&c, &KEY, &r1, "t").unwrap();
+
+        let mut r2 = sample();
+        r2.site = Some("Bridge 9".into());
+        r2.flags_json = r#"[{"code":"PPE","status":"open"}]"#.into();
+        save_record(&c, &KEY, &r2, "t").unwrap();
+
+        // Resolve one flag on r1 → the site's open count drops from 3 to 2 (reads current version).
+        resolve_flag(&c, &id1, "FALL", "fixed", "t2").unwrap();
+
+        let by_site = open_flags_by_site(&c).unwrap();
+        assert_eq!(by_site.len(), 1);
+        assert_eq!(by_site[0]["site"], "Bridge 9");
+        assert_eq!(by_site[0]["openFlags"], 2); // TRENCH + PPE (FALL resolved)
+        assert_eq!(by_site[0]["records"], 2);
     }
 }

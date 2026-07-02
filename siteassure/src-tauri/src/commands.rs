@@ -208,6 +208,13 @@ pub fn resolve_flag(
     crate::db::resolve_flag(&conn, &id, &flag_code, &note, &now)
 }
 
+/// 06 Dashboard readiness: open (unresolved) flag counts grouped by site, most first.
+#[tauri::command]
+pub fn open_flags_by_site(db: tauri::State<'_, crate::db::Db>) -> Result<Vec<serde_json::Value>, String> {
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    crate::db::open_flags_by_site(&conn)
+}
+
 /// 01 Home / Records list.
 #[tauri::command]
 pub fn list_records(db: tauri::State<'_, crate::db::Db>) -> Result<Vec<serde_json::Value>, String> {
